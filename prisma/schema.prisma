@@ -1,0 +1,264 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum DepositStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  APPROVED
+  REJECTED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  BONUS
+  ADJUSTMENT
+  INVESTMENT_FUND
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum InvestmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  username     String    @unique
+  passwordHash         String
+  roleId               String
+  emailVerified        Boolean   @default(false)
+  verificationToken    String?
+  resetToken           String?
+  resetTokenExpiry     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
+
+  role         Role          @relation(fields: [roleId], references: [id])
+  profile      Profile?
+  investments  Investment[]
+  deposits     Deposit[]
+  withdrawals  Withdrawal[]
+  transactions Transaction[]
+  notifications Notification[]
+  auditLogs    AuditLog[]
+
+  @@index([email])
+  @@index([username])
+  @@index([deletedAt])
+}
+
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  fullName  String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Role {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  permissions Permission[] @relation("RoleToPermission")
+  users       User[]
+
+  @@index([name])
+  @@index([deletedAt])
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roles       Role[]   @relation("RoleToPermission")
+
+  @@index([name])
+}
+
+model InvestmentPlan {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String
+  minAmount   Float
+  maxAmount   Float
+  enabled     Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  investments Investment[]
+  deposits    Deposit[]
+
+  @@index([enabled])
+  @@index([deletedAt])
+}
+
+model Investment {
+  id          String           @id @default(uuid())
+  userId      String
+  planId      String
+  amount      Float
+  balance     Float            // Current adjusted value of this specific investment
+  status      InvestmentStatus @default(ACTIVE)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan               InvestmentPlan      @relation(fields: [planId], references: [id])
+  performanceRecords PerformanceRecord[]
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model PerformanceRecord {
+  id           String   @id @default(uuid())
+  investmentId String
+  amount       Float    // Positive for Profit/Bonus, Negative for Loss/Adjustment
+  type         String   // PROFIT, LOSS, BONUS, ADJUSTMENT
+  note         String?
+  createdAt    DateTime @default(now())
+
+  investment   Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+
+  @@index([investmentId])
+}
+
+model Deposit {
+  id           String        @id @default(uuid())
+  userId       String
+  planId       String
+  amount       Float
+  walletId     String
+  proofUrl     String?       // optional proof of payment / reference
+  status       DepositStatus @default(PENDING)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan         InvestmentPlan  @relation(fields: [planId], references: [id])
+  wallet       Wallet          @relation(fields: [walletId], references: [id])
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Withdrawal {
+  id        String           @id @default(uuid())
+  userId    String
+  amount    Float
+  status    WithdrawalStatus @default(PENDING)
+  address   String           // Crypto address to withdraw to
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  deletedAt DateTime?
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Transaction {
+  id          String            @id @default(uuid())
+  userId      String
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  amount      Float
+  reference   String            @unique
+  description String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([reference])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+model Wallet {
+  id           String    @id @default(uuid())
+  name         String    // e.g. "Bitcoin", "USDT (TRC20)"
+  address      String
+  qrCodeUrl    String?   // optional generated URL
+  enabled      Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  deposits     Deposit[]
+
+  @@index([enabled])
+  @@index([deletedAt])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  ipAddress String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+}

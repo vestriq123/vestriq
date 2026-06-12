@@ -12,6 +12,7 @@ export class PerformanceService {
     amount: number;
     type: PerformanceUpdateType;
     note?: string;
+    createdAt?: Date;
   }) {
     const investment = await db.investment.findFirst({
       where: {
@@ -69,6 +70,7 @@ export class PerformanceService {
           amount: signedAmount,
           type: data.type,
           note: data.note || null,
+          ...(data.createdAt ? { createdAt: data.createdAt } : {}),
         },
       });
 
@@ -128,6 +130,90 @@ export class PerformanceService {
   private formatSignedAmount(amount: number) {
     const prefix = amount >= 0 ? "+" : "-";
     return `${prefix}$${Math.abs(amount).toLocaleString()}`;
+  }
+
+  async deleteRecord(data: {
+    recordId: string;
+    adminUserId: string;
+  }) {
+    const record = await db.performanceRecord.findUnique({
+      where: { id: data.recordId },
+      include: {
+        investment: {
+          include: {
+            plan: true,
+          }
+        }
+      }
+    });
+
+    if (!record) {
+      throw ApiError.notFound("Performance record not found");
+    }
+
+    if (record.investment.status !== InvestmentStatus.ACTIVE) {
+      throw ApiError.badRequest("Only active investments can have performance records deleted");
+    }
+
+    const nextBalance = record.investment.balance - record.amount;
+
+    if (nextBalance < 0) {
+      throw ApiError.badRequest("Deleting this record would reduce investment balance below zero");
+    }
+
+    return db.$transaction(async (tx) => {
+      const updatedInvestment = await tx.investment.update({
+        where: { id: record.investmentId },
+        data: {
+          balance: nextBalance,
+          status: nextBalance === 0 ? InvestmentStatus.COMPLETED : InvestmentStatus.ACTIVE,
+        },
+      });
+
+      await tx.performanceRecord.delete({
+        where: { id: record.id },
+      });
+
+      await tx.transaction.create({
+        data: {
+          userId: record.investment.userId,
+          type: TransactionType.ADJUSTMENT,
+          status: TransactionStatus.SUCCESS,
+          amount: -record.amount,
+          reference: `PERF-DEL-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+          description: `Reversal: Deleted performance record of type ${record.type} for ${record.investment.plan.name}`,
+        },
+      });
+
+      await notificationService.sendPortfolioUpdated(
+        record.investment.userId,
+        -record.amount,
+        nextBalance,
+        "ADJUSTMENT",
+        "Performance record correction",
+        tx
+      );
+
+      await tx.auditLog.create({
+        data: {
+          userId: data.adminUserId,
+          action: "investment.performance.delete",
+          details: JSON.stringify({
+            investmentId: record.investmentId,
+            recordId: record.id,
+            type: record.type,
+            amount: record.amount,
+            previousBalance: record.investment.balance,
+            nextBalance,
+          }),
+        },
+      });
+
+      return {
+        success: true,
+        investment: updatedInvestment,
+      };
+    });
   }
 }
 

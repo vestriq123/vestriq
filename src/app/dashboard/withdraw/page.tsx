@@ -22,6 +22,7 @@ export default function WithdrawalPage() {
   const [withdrawableBalance, setWithdrawableBalance] = useState(0);
   const [amount, setAmount] = useState("");
   const [address, setAddress] = useState("");
+  const [payoutMethod, setPayoutMethod] = useState<"wallet" | "stripe" | "paypal">("wallet");
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -81,8 +82,8 @@ export default function WithdrawalPage() {
       return;
     }
     
-    if (address.trim().length < 10) {
-      setErrorMsg("Please enter a valid destination crypto wallet address.");
+    if (address.trim().length < 5) {
+      setErrorMsg("Please enter valid payout destination details.");
       return;
     }
 
@@ -91,7 +92,7 @@ export default function WithdrawalPage() {
       const res = await fetch("/api/withdrawals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: numAmt, address })
+        body: JSON.stringify({ amount: numAmt, address: `[${payoutMethod.toUpperCase()}] ${address}` })
       });
       const data = await res.json();
       if (data.success) {
@@ -246,7 +247,7 @@ export default function WithdrawalPage() {
               </div>
 
               {/* INPUT FORM MODULE */}
-              <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-4">
+              <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-6">
                 <div className="space-y-2">
                   <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold">Withdrawal Amount ($)</label>
                   <div className="relative max-w-sm">
@@ -265,12 +266,49 @@ export default function WithdrawalPage() {
                   </div>
                 </div>
 
+                <div className="space-y-4">
+                  <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold">Select Payout Method</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setPayoutMethod("wallet"); setAddress(""); }}
+                      className={`py-3 px-4 text-xs font-bold rounded-xl border transition-all ${payoutMethod === "wallet" ? "bg-indigo-600/10 text-indigo-300 border-indigo-500" : "bg-slate-950/40 border-slate-900 text-slate-400 hover:text-white"}`}
+                    >
+                      Crypto Wallet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setPayoutMethod("stripe"); setAddress(""); }}
+                      className={`py-3 px-4 text-xs font-bold rounded-xl border transition-all ${payoutMethod === "stripe" ? "bg-indigo-600/10 text-indigo-300 border-indigo-500" : "bg-slate-950/40 border-slate-900 text-slate-400 hover:text-white"}`}
+                    >
+                      Stripe
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setPayoutMethod("paypal"); setAddress(""); }}
+                      className={`py-3 px-4 text-xs font-bold rounded-xl border transition-all ${payoutMethod === "paypal" ? "bg-indigo-600/10 text-indigo-300 border-indigo-500" : "bg-slate-950/40 border-slate-900 text-slate-400 hover:text-white"}`}
+                    >
+                      PayPal
+                    </button>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold">Destination Wallet Address (USDT / BTC / ETH)</label>
+                  <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold">
+                    {payoutMethod === "wallet" && "Destination Wallet Address (BTC, ETH, USDT)"}
+                    {payoutMethod === "stripe" && "Stripe Account Email / Card Details"}
+                    {payoutMethod === "paypal" && "PayPal Email Address"}
+                  </label>
                   <input
-                    type="text"
+                    type={payoutMethod === "wallet" ? "text" : "email"}
                     required
-                    placeholder="e.g. TYG3j8Z1pQWJt99fKLAkNsN7v4Yh8R3q2w"
+                    placeholder={
+                      payoutMethod === "wallet"
+                        ? "e.g. TYG3j8Z1pQWJt99fKLAkNsN7v4Yh8R3q2w"
+                        : payoutMethod === "stripe"
+                        ? "e.g. stripe-account@company.com"
+                        : "e.g. paypal-email@domain.com"
+                    }
                     value={address}
                     onChange={(e) => {
                       setAddress(e.target.value);
@@ -278,7 +316,11 @@ export default function WithdrawalPage() {
                     }}
                     className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-2xl px-4 py-3 text-xs focus:outline-none text-white font-mono"
                   />
-                  <p className="text-[10px] text-slate-500">Ensure the correct network fits the asset format before submitting.</p>
+                  <p className="text-[10px] text-slate-500">
+                    {payoutMethod === "wallet" && "Ensure the correct network fits the asset format before submitting."}
+                    {payoutMethod === "stripe" && "Your payout will be processed securely via Stripe Connect."}
+                    {payoutMethod === "paypal" && "Payout will be sent directly to your verified PayPal email address."}
+                  </p>
                 </div>
               </div>
 

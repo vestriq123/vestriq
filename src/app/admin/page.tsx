@@ -82,6 +82,18 @@ function signedPerformanceAmount(amount: number, type: string) {
   return Math.abs(amount);
 }
 
+function formatPayoutDetails(address: string) {
+  if (address && address.startsWith("[")) {
+    const endIdx = address.indexOf("]");
+    if (endIdx !== -1) {
+      const method = address.slice(1, endIdx);
+      const details = address.slice(endIdx + 1);
+      return { method, details };
+    }
+  }
+  return { method: "CRYPTO WALLET", details: address };
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "investments" | "deposits" | "withdrawals" | "wallets" | "analytics" | "plans">("overview");
@@ -96,6 +108,8 @@ export default function AdminDashboardPage() {
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
   const [adjustmentType, setAdjustmentType] = useState("PROFIT");
   const [adjustmentNote, setAdjustmentNote] = useState("");
+  const [adjustmentDate, setAdjustmentDate] = useState("");
+  const [deletingRecordId, setDeletingRecordId] = useState("");
   const [adjustmentError, setAdjustmentError] = useState("");
   const [savingAdjustment, setSavingAdjustment] = useState(false);
   interface WalletAddressData {
@@ -515,6 +529,7 @@ export default function AdminDashboardPage() {
           type: adjustmentType,
           amount: signedPerformanceAmount(Number(adjustmentAmount), adjustmentType),
           note: adjustmentNote.trim() || undefined,
+          createdAt: adjustmentDate || undefined,
         }),
       });
       const data = await response.json();
@@ -523,6 +538,7 @@ export default function AdminDashboardPage() {
         setSelectedInvestment(null);
         setAdjustmentAmount("");
         setAdjustmentNote("");
+        setAdjustmentDate("");
         fetchInvestments();
       } else {
         setAdjustmentError(data.error?.message || "Failed to apply performance update");
@@ -532,6 +548,39 @@ export default function AdminDashboardPage() {
       setAdjustmentError("Network error occurred while applying performance update");
     } finally {
       setSavingAdjustment(false);
+    }
+  };
+
+  const handleDeletePerformanceRecord = async (recordId: string, investmentId: string) => {
+    if (!confirm("Are you sure you want to delete this performance record? The investment balance will be reverted.")) return;
+    setDeletingRecordId(recordId);
+    try {
+      const res = await fetch(`/api/investments/${investmentId}/performance?recordId=${recordId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Refresh investments
+        fetchInvestments();
+        // Update selectedInvestment records list
+        if (selectedInvestment) {
+          const updatedRecords = selectedInvestment.performanceRecords?.filter(r => r.id !== recordId) || [];
+          const recordToDelete = selectedInvestment.performanceRecords?.find(r => r.id === recordId);
+          const revertedBalance = recordToDelete ? selectedInvestment.balance - recordToDelete.amount : selectedInvestment.balance;
+          setSelectedInvestment({
+            ...selectedInvestment,
+            balance: revertedBalance,
+            performanceRecords: updatedRecords,
+          });
+        }
+      } else {
+        alert(data.error?.message || "Failed to delete performance record");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error occurred while deleting performance record");
+    } finally {
+      setDeletingRecordId("");
     }
   };
 
@@ -781,23 +830,29 @@ export default function AdminDashboardPage() {
                     ) : withdrawals.filter(w => w.status === "PROCESSING" || w.status === "PENDING").length === 0 ? (
                       <div className="text-xs text-slate-550">No withdrawal payouts in queue.</div>
                     ) : (
-                      withdrawals.filter(w => w.status === "PROCESSING" || w.status === "PENDING").map((w, i) => (
-                        <div key={i} className="flex justify-between items-center bg-slate-950/40 p-4 border border-slate-900 rounded-2xl">
-                          <div>
-                            <h5 className="font-bold text-xs">{w.user?.profile?.fullName || w.user?.username || w.user?.email || "Investor"}</h5>
-                            <span className="text-[10px] text-slate-500 truncate max-w-[200px] block font-mono">{w.address}</span>
+                      withdrawals.filter(w => w.status === "PROCESSING" || w.status === "PENDING").map((w, i) => {
+                        const { method, details } = formatPayoutDetails(w.address);
+                        return (
+                          <div key={i} className="flex justify-between items-center bg-slate-950/40 p-4 border border-slate-900 rounded-2xl">
+                            <div>
+                              <h5 className="font-bold text-xs">{w.user?.profile?.fullName || w.user?.username || w.user?.email || "Investor"}</h5>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span className="text-[9px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-extrabold uppercase">{method}</span>
+                                <span className="text-[10px] text-slate-450 truncate max-w-[150px] block font-mono">{details}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-sm text-red-400">-${w.amount.toLocaleString()}</span>
+                              <button
+                                onClick={() => handleApproveWithdrawal(w.id)}
+                                className="p-1.5 hover:bg-slate-900 rounded-lg text-emerald-400"
+                              >
+                                <CheckCircle className="w-5 h-5" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-bold text-sm text-red-400">-${w.amount.toLocaleString()}</span>
-                            <button
-                              onClick={() => handleApproveWithdrawal(w.id)}
-                              className="p-1.5 hover:bg-slate-900 rounded-lg text-emerald-400"
-                            >
-                              <CheckCircle className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -1091,16 +1146,38 @@ export default function AdminDashboardPage() {
                       />
                     </div>
 
+                    <div>
+                      <label className="block text-xs text-slate-400 uppercase tracking-wider mb-2">Performance Date (Optional)</label>
+                      <input
+                        type="datetime-local"
+                        value={adjustmentDate}
+                        onChange={(e) => setAdjustmentDate(e.target.value)}
+                        className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 text-slate-300"
+                      />
+                    </div>
+
                     <div className="bg-slate-950/40 border border-slate-900 rounded-2xl p-4">
                       <h5 className="text-xs font-semibold text-slate-300 mb-3">Recent Performance Updates</h5>
                       <div className="space-y-2">
                         {selectedInvestment.performanceRecords?.length ? (
                           selectedInvestment.performanceRecords.slice(0, 4).map((record) => (
                             <div key={record.id} className="flex items-center justify-between text-[11px] border-b border-slate-900/60 last:border-b-0 pb-2 last:pb-0">
-                              <span className="text-slate-400">{record.type}</span>
-                              <span className={record.amount >= 0 ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
-                                {record.amount >= 0 ? "+" : "-"}${Math.abs(record.amount).toLocaleString()}
-                              </span>
+                              <div className="flex flex-col">
+                                <span className="text-slate-400 font-semibold">{record.type}</span>
+                                <span className="text-[9px] text-slate-550">{new Date(record.createdAt).toLocaleDateString()}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={record.amount >= 0 ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
+                                  {record.amount >= 0 ? "+" : "-"}${Math.abs(record.amount).toLocaleString()}
+                                </span>
+                                <button
+                                  onClick={() => handleDeletePerformanceRecord(record.id, selectedInvestment.id)}
+                                  disabled={deletingRecordId === record.id}
+                                  className="text-red-500 hover:text-red-400 text-[9px] font-bold uppercase tracking-wider cursor-pointer disabled:opacity-50"
+                                >
+                                  {deletingRecordId === record.id ? "..." : "Delete"}
+                                </button>
+                              </div>
                             </div>
                           ))
                         ) : (
@@ -1221,7 +1298,7 @@ export default function AdminDashboardPage() {
                     <tr className="border-b border-slate-900 text-slate-500 uppercase tracking-wider font-semibold">
                       <th className="py-3">Withdrawal ID</th>
                       <th className="py-3">Investor</th>
-                      <th className="py-3 font-mono">Crypto Address</th>
+                      <th className="py-3 font-mono">Payout Details</th>
                       <th className="py-3">Date</th>
                       <th className="py-3 text-right">Amount</th>
                       <th className="py-3 text-right">Status</th>
@@ -1250,7 +1327,21 @@ export default function AdminDashboardPage() {
                         <tr key={i} className="border-b border-slate-900/60 hover:bg-slate-900/20">
                           <td className="py-4 font-semibold text-white truncate max-w-[100px]">{w.id}</td>
                           <td className="py-4">{w.user?.profile?.fullName || w.user?.username || w.user?.email || "Investor"}</td>
-                          <td className="py-4 font-mono max-w-[220px] truncate">{w.address}</td>
+                          <td className="py-4">
+                            {(() => {
+                              const { method, details } = formatPayoutDetails(w.address);
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="px-2 py-0.5 rounded text-[9px] bg-slate-850 text-indigo-400 font-extrabold uppercase shrink-0">
+                                    {method}
+                                  </span>
+                                  <span className="font-mono text-slate-350 truncate max-w-[160px]" title={details}>
+                                    {details}
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                          </td>
                           <td className="py-4">{new Date(w.createdAt).toLocaleDateString()}</td>
                           <td className="py-4 text-right font-bold text-white">${w.amount.toLocaleString()}</td>
                           <td className="py-4 text-right">

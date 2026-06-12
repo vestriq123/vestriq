@@ -81,22 +81,32 @@ export default function UserDashboardPage() {
     createdAt: string;
   }
 
+  interface ProfileInfo {
+    customPortfolioValue: number | null;
+    customTotalInvestment: number | null;
+    customTotalProfit: number | null;
+    customWithdrawal: number | null;
+    customAvailableCash: number | null;
+  }
+
   // Live Data States
   const [deposits, setDeposits] = useState<DepositInfo[]>([]);
   const [investments, setInvestments] = useState<InvestmentInfo[]>([]);
   const [transactions, setTransactions] = useState<TransactionInfo[]>([]);
   const [notifications, setNotifications] = useState<NotificationInfo[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalInfo[]>([]);
+  const [profile, setProfile] = useState<ProfileInfo | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
   const fetchAllData = async () => {
     try {
-      const [depRes, invRes, txRes, notifRes, withdrawalRes] = await Promise.all([
+      const [depRes, invRes, txRes, notifRes, withdrawalRes, profileRes] = await Promise.all([
         fetch("/api/deposits"),
         fetch("/api/investments"),
         fetch("/api/transactions"),
         fetch("/api/notifications"),
-        fetch("/api/withdrawals")
+        fetch("/api/withdrawals"),
+        fetch("/api/profile")
       ]);
 
       const depJson = await depRes.json();
@@ -104,12 +114,14 @@ export default function UserDashboardPage() {
       const txJson = await txRes.json();
       const notifJson = await notifRes.json();
       const withdrawalJson = await withdrawalRes.json();
+      const profileJson = await profileRes.json();
 
       if (depJson.success) setDeposits(depJson.data);
       if (invJson.success) setInvestments(invJson.data);
       if (txJson.success) setTransactions(txJson.data);
       if (notifJson.success) setNotifications(notifJson.data);
       if (withdrawalJson.success) setWithdrawals(withdrawalJson.data);
+      if (profileJson.success) setProfile(profileJson.data);
     } catch (err) {
       console.error("Failed to fetch dashboard data", err);
     } finally {
@@ -154,13 +166,33 @@ export default function UserDashboardPage() {
     }
   };
 
-  const portfolioValue = investments.reduce((acc, inv) => acc + inv.balance, 0);
-  const totalInvested = investments.reduce((acc, inv) => acc + inv.amount, 0);
-  const totalProfit = portfolioValue - totalInvested;
-  const activePlanCount = investments.filter(inv => inv.status === "ACTIVE").length;
-  const approvedWithdrawalTotal = withdrawals
+  const calculatedPortfolioValue = investments.reduce((acc, inv) => acc + inv.balance, 0);
+  const calculatedTotalInvested = investments.reduce((acc, inv) => acc + inv.amount, 0);
+  const calculatedWithdrawalTotal = withdrawals
     .filter(withdrawal => withdrawal.status === "APPROVED")
     .reduce((total, withdrawal) => total + withdrawal.amount, 0);
+
+  const portfolioValue = profile?.customPortfolioValue !== null && profile?.customPortfolioValue !== undefined
+    ? profile.customPortfolioValue
+    : calculatedPortfolioValue;
+
+  const totalInvested = profile?.customTotalInvestment !== null && profile?.customTotalInvestment !== undefined
+    ? profile.customTotalInvestment
+    : calculatedTotalInvested;
+
+  const totalProfit = profile?.customTotalProfit !== null && profile?.customTotalProfit !== undefined
+    ? profile.customTotalProfit
+    : (portfolioValue - totalInvested);
+
+  const approvedWithdrawalTotal = profile?.customWithdrawal !== null && profile?.customWithdrawal !== undefined
+    ? profile.customWithdrawal
+    : calculatedWithdrawalTotal;
+
+  const availableCash = profile?.customAvailableCash !== null && profile?.customAvailableCash !== undefined
+    ? profile.customAvailableCash
+    : 0.00;
+
+  const activePlanCount = investments.filter(inv => inv.status === "ACTIVE").length;
   const performanceRecords = investments
     .flatMap((investment) => investment.performanceRecords || [])
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -347,7 +379,7 @@ export default function UserDashboardPage() {
                 <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Available Cash</span>
                 <Wallet className="w-4 h-4 text-indigo-400" />
               </div>
-              <h3 className="text-xl font-bold">$0.00</h3>
+              <h3 className="text-xl font-bold">${availableCash.toLocaleString()}</h3>
               <p className="text-[10px] text-slate-500 mt-2 font-semibold">Wallet Funding Balance</p>
             </div>
           </div>

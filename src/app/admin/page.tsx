@@ -42,14 +42,6 @@ const analyticsData = [
   { name: "Week 6", deposits: 48500, withdrawals: 11000 },
 ];
 
-const mockUsers = [
-  { id: "usr_01", name: "Chinedu Okafor", email: "chinedu@example.com", username: "chinedu_txn", role: "USER", status: "ACTIVE", joined: "2026-05-15" },
-  { id: "usr_02", name: "Aisha Yusuf", email: "aisha@example.com", username: "aishayusuf", role: "USER", status: "ACTIVE", joined: "2026-05-20" },
-  { id: "usr_03", name: "Tunde Bakare", email: "tunde@example.com", username: "tundebakare", role: "USER", status: "SUSPENDED", joined: "2026-05-25" },
-  { id: "usr_04", name: "Sarah Williams", email: "sarah@example.com", username: "sarah_w", role: "ADMIN", status: "ACTIVE", joined: "2026-05-01" },
-];
-
-
 
 interface InvestmentData {
   id: string;
@@ -125,6 +117,94 @@ export default function AdminDashboardPage() {
   });
   const [walletError, setWalletError] = useState("");
   const [savingWallet, setSavingWallet] = useState(false);
+
+  interface UserProfile {
+    fullName: string | null;
+    customPortfolioValue: number | null;
+    customTotalInvestment: number | null;
+    customTotalProfit: number | null;
+    customWithdrawal: number | null;
+    customAvailableCash: number | null;
+  }
+
+  interface UserData {
+    id: string;
+    email: string;
+    username: string;
+    createdAt: string;
+    role?: {
+      name: string;
+    } | null;
+    profile?: UserProfile | null;
+  }
+
+  // User Management State
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [selectedUserForOverride, setSelectedUserForOverride] = useState<UserData | null>(null);
+  const [overridePortfolioValue, setOverridePortfolioValue] = useState("");
+  const [overrideTotalInvestment, setOverrideTotalInvestment] = useState("");
+  const [overrideTotalProfit, setOverrideTotalProfit] = useState("");
+  const [overrideWithdrawal, setOverrideWithdrawal] = useState("");
+  const [overrideAvailableCash, setOverrideAvailableCash] = useState("");
+  const [savingOverrides, setSavingOverrides] = useState(false);
+  const [overrideError, setOverrideError] = useState("");
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await fetch("/api/users");
+      const data = await res.json();
+      if (data.success) {
+        setUsers(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch users", err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const handleOpenOverrideModal = (user: UserData) => {
+    setSelectedUserForOverride(user);
+    setOverridePortfolioValue(user.profile?.customPortfolioValue?.toString() || "");
+    setOverrideTotalInvestment(user.profile?.customTotalInvestment?.toString() || "");
+    setOverrideTotalProfit(user.profile?.customTotalProfit?.toString() || "");
+    setOverrideWithdrawal(user.profile?.customWithdrawal?.toString() || "");
+    setOverrideAvailableCash(user.profile?.customAvailableCash?.toString() || "");
+    setOverrideError("");
+  };
+
+  const handleSaveOverrides = async () => {
+    if (!selectedUserForOverride) return;
+    setSavingOverrides(true);
+    setOverrideError("");
+    try {
+      const res = await fetch(`/api/users/${selectedUserForOverride.id}/stats`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portfolioValue: overridePortfolioValue === "" ? null : Number(overridePortfolioValue),
+          totalInvestment: overrideTotalInvestment === "" ? null : Number(overrideTotalInvestment),
+          totalProfit: overrideTotalProfit === "" ? null : Number(overrideTotalProfit),
+          withdrawal: overrideWithdrawal === "" ? null : Number(overrideWithdrawal),
+          availableCash: overrideAvailableCash === "" ? null : Number(overrideAvailableCash),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedUserForOverride(null);
+        fetchUsers();
+      } else {
+        setOverrideError(data.error?.message || "Failed to update overrides");
+      }
+    } catch (err) {
+      console.error(err);
+      setOverrideError("Network error occurred while saving overrides");
+    } finally {
+      setSavingOverrides(false);
+    }
+  };
 
   const [investments, setInvestments] = useState<InvestmentData[]>([]);
   const [loadingInvestments, setLoadingInvestments] = useState(false);
@@ -337,6 +417,7 @@ export default function AdminDashboardPage() {
     fetchWithdrawals();
     fetchInvestments();
     fetchWallets();
+    fetchUsers();
   }, []);
 
   const handleLogout = async () => {
@@ -747,56 +828,160 @@ export default function AdminDashboardPage() {
                   >
                     <option value="ALL">All Statuses</option>
                     <option value="ACTIVE">Active</option>
-                    <option value="SUSPENDED">Suspended</option>
                   </select>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-400">
-                  <thead>
-                    <tr className="border-b border-slate-900 text-slate-500 uppercase tracking-wider font-semibold">
-                      <th className="py-3">Name</th>
-                      <th className="py-3">Username</th>
-                      <th className="py-3">Email</th>
-                      <th className="py-3">Role</th>
-                      <th className="py-3">Joined</th>
-                      <th className="py-3">Status</th>
-                      <th className="py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockUsers
-                      .filter(u => {
-                        const matchesQuery = u.name.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase());
-                        const matchesStatus = statusFilter === "ALL" || u.status === statusFilter;
-                        return matchesQuery && matchesStatus;
-                      })
-                      .map((u, i) => (
-                        <tr key={i} className="border-b border-slate-900/60 hover:bg-slate-900/20">
-                          <td className="py-4 font-semibold text-white">{u.name}</td>
-                          <td className="py-4">{u.username}</td>
-                          <td className="py-4">{u.email}</td>
-                          <td className="py-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${u.role === "ADMIN" ? "bg-indigo-500/10 text-indigo-400" : "bg-slate-500/10 text-slate-400"}`}>
-                              {u.role}
-                            </span>
-                          </td>
-                          <td className="py-4">{u.joined}</td>
-                          <td className="py-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${u.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
-                              {u.status}
-                            </span>
-                          </td>
-                          <td className="py-4 text-right">
-                            <button className="text-indigo-400 hover:text-indigo-300 font-semibold mr-3">Toggle Status</button>
-                            <button className="text-red-400 hover:text-red-300 font-semibold">Suspend</button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
+              {loadingUsers ? (
+                <div className="text-center py-12 text-xs text-slate-400">Loading users...</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-400">
+                    <thead>
+                      <tr className="border-b border-slate-900 text-slate-500 uppercase tracking-wider font-semibold">
+                        <th className="py-3">Name</th>
+                        <th className="py-3">Username</th>
+                        <th className="py-3">Email</th>
+                        <th className="py-3">Role</th>
+                        <th className="py-3">Joined</th>
+                        <th className="py-3">Status</th>
+                        <th className="py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users
+                        .filter(u => {
+                          const fullName = u.profile?.fullName || "";
+                          const username = u.username || "";
+                          const email = u.email || "";
+                          const matchesQuery = fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                              username.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                              email.toLowerCase().includes(searchQuery.toLowerCase());
+                          return matchesQuery;
+                        })
+                        .map((u, i) => (
+                          <tr key={i} className="border-b border-slate-900/60 hover:bg-slate-900/20">
+                            <td className="py-4 font-semibold text-white">{u.profile?.fullName || "Investor"}</td>
+                            <td className="py-4 font-mono">{u.username}</td>
+                            <td className="py-4">{u.email}</td>
+                            <td className="py-4">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${u.role?.name === "ADMIN" ? "bg-indigo-500/10 text-indigo-400" : "bg-slate-500/10 text-slate-400"}`}>
+                                {u.role?.name || "USER"}
+                              </span>
+                            </td>
+                            <td className="py-4">{new Date(u.createdAt).toLocaleDateString()}</td>
+                            <td className="py-4">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400">
+                                ACTIVE
+                              </span>
+                            </td>
+                            <td className="py-4 text-right">
+                              <button
+                                onClick={() => handleOpenOverrideModal(u)}
+                                className="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
+                              >
+                                Edit Stats
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* OVERRIDE MODAL */}
+              {selectedUserForOverride && (
+                <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-100">Edit Manual Stats Override</h3>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Override statistics for <strong>{selectedUserForOverride.profile?.fullName || selectedUserForOverride.username}</strong>. Leave a field blank to clear the override and use calculated system values.
+                      </p>
+                    </div>
+
+                    {overrideError && (
+                      <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
+                        {overrideError}
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Portfolio Value ($)</label>
+                        <input
+                          type="number"
+                          placeholder="Calculated automatically"
+                          value={overridePortfolioValue}
+                          onChange={(e) => setOverridePortfolioValue(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Total Investment ($)</label>
+                        <input
+                          type="number"
+                          placeholder="Calculated automatically"
+                          value={overrideTotalInvestment}
+                          onChange={(e) => setOverrideTotalInvestment(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Total Profit ($)</label>
+                        <input
+                          type="number"
+                          placeholder="Calculated automatically"
+                          value={overrideTotalProfit}
+                          onChange={(e) => setOverrideTotalProfit(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Withdrawals ($)</label>
+                        <input
+                          type="number"
+                          placeholder="Calculated automatically"
+                          value={overrideWithdrawal}
+                          onChange={(e) => setOverrideWithdrawal(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Available Cash ($)</label>
+                        <input
+                          type="number"
+                          placeholder="Calculated automatically"
+                          value={overrideAvailableCash}
+                          onChange={(e) => setOverrideAvailableCash(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4 border-t border-slate-800">
+                      <button
+                        onClick={handleSaveOverrides}
+                        disabled={savingOverrides}
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold py-3 rounded-xl transition-colors text-white disabled:opacity-50"
+                      >
+                        {savingOverrides ? "Saving..." : "Save Overrides"}
+                      </button>
+                      <button
+                        onClick={() => setSelectedUserForOverride(null)}
+                        className="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-xs font-semibold px-4 py-3 rounded-xl transition-colors text-slate-400"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

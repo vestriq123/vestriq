@@ -152,8 +152,8 @@ async function main() {
     },
     {
       name: "Bitcoin (BTC)",
-      address: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
-      qrCodeUrl: "/images/wallets/btc.png",
+      address: "1DyawrGVfokiZTqTbQKWZiDxB5sorQwBYT",
+      qrCodeUrl: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=1DyawrGVfokiZTqTbQKWZiDxB5sorQwBYT",
     },
     {
       name: "Ethereum (ERC-20)",

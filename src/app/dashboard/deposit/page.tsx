@@ -375,13 +375,14 @@ function DepositContent() {
               <p className="text-xs text-slate-400 mt-1">Please deposit to the address below manually</p>
             </div>
 
-            {/* QR Code Placeholder */}
+            {/* QR Code */}
             <div className="flex flex-col items-center justify-center p-4 bg-slate-950 rounded-2xl border border-slate-800">
-              <div className="w-36 h-36 border-2 border-dashed border-slate-800 bg-slate-900 rounded-xl flex items-center justify-center relative">
-                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-mono text-center px-4">
-                  QR Code<br />USDT TRC20 / ERC20
-                </span>
-                <div className="absolute inset-2 border border-indigo-500/10 rounded-lg animate-pulse" />
+              <div className="w-36 h-36 bg-slate-900 rounded-xl flex items-center justify-center relative overflow-hidden">
+                <img 
+                  src={selectedWallet.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(selectedWallet.address)}`} 
+                  alt={`${selectedWallet.name} QR Code`} 
+                  className="w-32 h-32 object-contain rounded-lg"
+                />
               </div>
               <span className="text-[10px] text-indigo-400 font-bold mt-3 uppercase tracking-wider">{selectedWallet.name} Network</span>
             </div>

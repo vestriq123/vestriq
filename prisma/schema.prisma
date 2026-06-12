@@ -70,12 +70,17 @@ model User {
 }
 
 model Profile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  fullName  String
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  fullName              String
+  avatarUrl             String?
+  customPortfolioValue  Float?
+  customTotalInvestment Float?
+  customTotalProfit     Float?
+  customWithdrawal      Float?
+  customAvailableCash   Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

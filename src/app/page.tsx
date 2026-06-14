@@ -16,13 +16,20 @@ import {
   X
 } from "lucide-react";
 
-// Mock Market Data (Nigerian companies)
+// Mock Market Data (US/Global indices)
 const companies = [
-  { name: "Dangote Cement", symbol: "DANGCEM", price: "₦550.00", change: "+1.2%", positive: true },
-  { name: "MTN Nigeria", symbol: "MTNN", price: "₦265.50", change: "-0.4%", positive: false },
-  { name: "GTCO Plc", symbol: "GTCO", price: "₦46.20", change: "+2.8%", positive: true },
-  { name: "Zenith Bank", symbol: "ZENITHBANK", price: "₦42.50", change: "+1.9%", positive: true },
-  { name: "Oando Plc", symbol: "OANDO", price: "₦12.80", change: "-1.5%", positive: false },
+  { name: "Manchester United Plc", symbol: "MANU", price: "$23.21", change: "-0.8%", positive: false },
+  { name: "Microsoft Corporation", symbol: "MSFT", price: "$390.74", change: "-1.1%", positive: false },
+  { name: "Mastercard Inc", symbol: "MA", price: "$489.98", change: "+0.4%", positive: true },
+  { name: "Lowe’s Companies Inc", symbol: "LOW", price: "$221.05", change: "+0.8%", positive: true },
+  { name: "American Airlines Group Inc", symbol: "AAL", price: "$14.98", change: "-2.4%", positive: false },
+  { name: "Amazon.com Inc", symbol: "AMZN", price: "$238.55", change: "+1.2%", positive: true },
+  { name: "Alibaba Group", symbol: "BABA", price: "$112.82", change: "-1.8%", positive: false },
+  { name: "Tesla, Inc", symbol: "TSLA", price: "$406.43", change: "+3.1%", positive: true },
+  { name: "Nokia Corp", symbol: "NOK", price: "$14.80", change: "+5.5%", positive: true },
+  { name: "Bank of America Corp", symbol: "BAC", price: "$56.02", change: "+1.1%", positive: true },
+  { name: "United Therapeutics Corporation", symbol: "UTHR", price: "$553.14", change: "-0.5%", positive: false },
+  { name: "Citigroup Inc", symbol: "C", price: "$139.83", change: "+5.6%", positive: true },
 ];
 
 const plans = [
@@ -285,14 +292,14 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
             <div>
               <h2 className="text-3xl font-bold">Market Overview</h2>
-              <p className="text-slate-400 text-sm mt-2">Active tracking parameters across leading national indices.</p>
+              <p className="text-slate-400 text-sm mt-2">Active tracking parameters across leading global equities.</p>
             </div>
             <div className="mt-4 md:mt-0 flex items-center gap-2 text-xs text-indigo-400 font-semibold uppercase tracking-wider">
               <span>Real-Time Indexes</span> <ArrowUpRight className="w-4 h-4" />
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 md:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {companies.map((c, i) => (
               <motion.div
                 key={i}

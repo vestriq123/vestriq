@@ -147,8 +147,8 @@ async function main() {
   const wallets = [
     {
       name: "USDT (TRC-20)",
-      address: "TYG3j8Z1pQWJt99fKLAkNsN7v4Yh8R3q2w",
-      qrCodeUrl: "/images/wallets/usdt-trc20.png",
+      address: "19hdEPSFQ4iUhtWoXHqg2E1kPCpUmaEgP8",
+      qrCodeUrl: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=19hdEPSFQ4iUhtWoXHqg2E1kPCpUmaEgP8",
     },
     {
       name: "Bitcoin (BTC)",
@@ -159,13 +159,13 @@ async function main() {
 
   for (const wallet of wallets) {
     const existing = await prisma.wallet.findFirst({
-      where: { address: wallet.address },
+      where: { name: wallet.name },
     });
     if (existing) {
       await prisma.wallet.update({
         where: { id: existing.id },
         data: {
-          name: wallet.name,
+          address: wallet.address,
           qrCodeUrl: wallet.qrCodeUrl,
         },
       });

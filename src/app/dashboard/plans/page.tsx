@@ -27,6 +27,7 @@ export default function InvestmentPlansPage() {
   const [plans, setPlans] = useState<PlanData[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingLogout, setLoadingLogout] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchPlans = async () => {
     try {
@@ -42,8 +43,21 @@ export default function InvestmentPlansPage() {
     }
   };
 
+  const checkAdminStatus = async () => {
+    try {
+      const res = await fetch("/api/auth/session");
+      const data = await res.json();
+      if (data.authenticated && data.user?.role === "ADMIN") {
+        setIsAdmin(true);
+      }
+    } catch (err) {
+      console.error("Failed to check admin status", err);
+    }
+  };
+
   useEffect(() => {
     fetchPlans();
+    checkAdminStatus();
   }, []);
 
   const handleLogout = async () => {
@@ -77,25 +91,33 @@ export default function InvestmentPlansPage() {
           <div className="space-y-1">
             <button
               onClick={() => router.push("/dashboard")}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
             >
               <Briefcase className="w-5 h-5" /> Portfolio Overview
             </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 bg-indigo-600/10 text-indigo-300 rounded-xl text-sm font-semibold border border-indigo-500/20">
+            <button className="w-full flex items-center gap-3 px-4 py-3 bg-indigo-600/10 text-indigo-300 rounded-xl text-sm font-semibold border border-indigo-500/20 text-left">
               <ShieldCheck className="w-5 h-5" /> Investment Plans
             </button>
             <button
               onClick={() => router.push("/dashboard/deposit")}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
             >
               <Wallet className="w-5 h-5" /> Deposit Funds
             </button>
             <button
               onClick={() => router.push("/dashboard/withdraw")}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
             >
               <ArrowDownLeft className="w-5 h-5" /> Request Payout
             </button>
+            {isAdmin && (
+              <button
+                onClick={() => router.push("/admin")}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-650/10 text-indigo-400 hover:text-indigo-300 rounded-xl text-sm font-semibold transition-colors text-left"
+              >
+                <ShieldCheck className="w-5 h-5" /> Admin Control
+              </button>
+            )}
           </div>
         </div>
 

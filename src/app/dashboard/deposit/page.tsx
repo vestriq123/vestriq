@@ -48,6 +48,7 @@ function DepositContent() {
   const [submitting, setSubmitting] = useState(false);
   const [loadingLogout, setLoadingLogout] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -56,13 +57,15 @@ function DepositContent() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [plansRes, walletsRes] = await Promise.all([
+        const [plansRes, walletsRes, sessionRes] = await Promise.all([
           fetch("/api/investment-plans"),
-          fetch("/api/wallets")
+          fetch("/api/wallets"),
+          fetch("/api/auth/session")
         ]);
         
         const plansData = await plansRes.json();
         const walletsData = await walletsRes.json();
+        const sessionData = await sessionRes.json();
         
         if (plansData.success) {
           setPlans(plansData.data);
@@ -74,10 +77,17 @@ function DepositContent() {
         }
         
         if (walletsData.success) {
-          setWallets(walletsData.data);
-          if (walletsData.data.length > 0) {
-            setSelectedWalletId(walletsData.data[0].id);
+          const filtered = walletsData.data.filter((w: WalletData) => 
+            w.name.toLowerCase().includes("bitcoin") || w.name.toLowerCase().includes("usdt")
+          );
+          setWallets(filtered);
+          if (filtered.length > 0) {
+            setSelectedWalletId(filtered[0].id);
           }
+        }
+
+        if (sessionData.authenticated && sessionData.user?.role === "ADMIN") {
+          setIsAdmin(true);
         }
       } catch (err) {
         console.error("Failed to load page data", err);
@@ -189,25 +199,33 @@ function DepositContent() {
           <div className="space-y-1">
             <button
               onClick={() => router.push("/dashboard")}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
             >
               <Briefcase className="w-5 h-5" /> Portfolio Overview
             </button>
             <button
               onClick={() => router.push("/dashboard/plans")}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
             >
               <ShieldCheck className="w-5 h-5" /> Investment Plans
             </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 bg-indigo-600/10 text-indigo-300 rounded-xl text-sm font-semibold border border-indigo-500/20">
+            <button className="w-full flex items-center gap-3 px-4 py-3 bg-indigo-600/10 text-indigo-300 rounded-xl text-sm font-semibold border border-indigo-500/20 text-left">
               <Wallet className="w-5 h-5" /> Deposit Funds
             </button>
             <button
               onClick={() => router.push("/dashboard/withdraw")}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
             >
               <ArrowDownLeft className="w-5 h-5" /> Request Payout
             </button>
+            {isAdmin && (
+              <button
+                onClick={() => router.push("/admin")}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-650/10 text-indigo-400 hover:text-indigo-300 rounded-xl text-sm font-semibold transition-colors text-left"
+              >
+                <ShieldCheck className="w-5 h-5" /> Admin Control
+              </button>
+            )}
           </div>
         </div>
 
@@ -338,7 +356,7 @@ function DepositContent() {
                     <input
                       type="number"
                       required
-                      placeholder="1,000"
+                      placeholder="100"
                       value={amount}
                       onChange={(e) => {
                         setAmount(e.target.value);
@@ -391,7 +409,7 @@ function DepositContent() {
               <div className="space-y-1">
                 <label className="block text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Amount to Transfer</label>
                 <div className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-3 text-sm font-bold text-emerald-400">
-                  ${Number(amount).toLocaleString()} USD
+                  ${Number(amount).toLocaleString()}
                 </div>
               </div>
 

@@ -97,16 +97,18 @@ export default function UserDashboardPage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalInfo[]>([]);
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
   const [loadingData, setLoadingData] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchAllData = async () => {
     try {
-      const [depRes, invRes, txRes, notifRes, withdrawalRes, profileRes] = await Promise.all([
+      const [depRes, invRes, txRes, notifRes, withdrawalRes, profileRes, sessionRes] = await Promise.all([
         fetch("/api/deposits"),
         fetch("/api/investments"),
         fetch("/api/transactions"),
         fetch("/api/notifications"),
         fetch("/api/withdrawals"),
-        fetch("/api/profile")
+        fetch("/api/profile"),
+        fetch("/api/auth/session")
       ]);
 
       const depJson = await depRes.json();
@@ -115,6 +117,7 @@ export default function UserDashboardPage() {
       const notifJson = await notifRes.json();
       const withdrawalJson = await withdrawalRes.json();
       const profileJson = await profileRes.json();
+      const sessionJson = await sessionRes.json();
 
       if (depJson.success) setDeposits(depJson.data);
       if (invJson.success) setInvestments(invJson.data);
@@ -122,6 +125,9 @@ export default function UserDashboardPage() {
       if (notifJson.success) setNotifications(notifJson.data);
       if (withdrawalJson.success) setWithdrawals(withdrawalJson.data);
       if (profileJson.success) setProfile(profileJson.data);
+      if (sessionJson.authenticated && sessionJson.user?.role === "ADMIN") {
+        setIsAdmin(true);
+      }
     } catch (err) {
       console.error("Failed to fetch dashboard data", err);
     } finally {
@@ -255,6 +261,15 @@ export default function UserDashboardPage() {
             >
               <ArrowDownLeft className="w-5 h-5" /> Request Payout
             </button>
+            {isAdmin && (
+              <button
+                id="nav-admin"
+                onClick={() => router.push("/admin")}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-650/10 text-indigo-400 hover:text-indigo-300 rounded-xl text-sm font-semibold border border-transparent transition-colors text-left"
+              >
+                <ShieldCheck className="w-5 h-5 text-indigo-400" /> Admin Control
+              </button>
+            )}
           </div>
         </div>
 

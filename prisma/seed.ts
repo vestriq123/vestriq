@@ -155,11 +155,6 @@ async function main() {
       address: "19hdEPSFQ4iUhtWoXHqg2E1kPCpUmaEgP8",
       qrCodeUrl: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=19hdEPSFQ4iUhtWoXHqg2E1kPCpUmaEgP8",
     },
-    {
-      name: "Ethereum (ERC-20)",
-      address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-      qrCodeUrl: "/images/wallets/eth.png",
-    },
   ];
 
   for (const wallet of wallets) {

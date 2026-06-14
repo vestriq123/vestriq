@@ -54,17 +54,17 @@ const plans = [
 
 const testimonials = [
   {
-    name: "Chinedu Okafor",
+    name: "Sarah Jenkins",
     role: "Senior Financial Analyst",
     text: "Vestriq completely changed how I allocate capital. The admin performance tracking updates keep my holdings secure and completely clear."
   },
   {
-    name: "Aisha Yusuf",
+    name: "David Miller",
     role: "Tech Entrepreneur",
     text: "I love the premium feel of the platform. Making deposits and tracking my portfolio adjustments is incredibly smooth."
   },
   {
-    name: "Tunde Bakare",
+    name: "Marcus Thompson",
     role: "Real Estate Developer",
     text: "Having dedicated wallet destinations and institutional-grade analytics makes Vestriq feel like a private bank dashboard."
   }
@@ -483,11 +483,11 @@ export default function LandingPage() {
           >
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Name</label>
-              <input type="text" required className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Tunde Bello" />
+              <input type="text" required className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors" placeholder="John Doe" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Email Address</label>
-              <input type="email" required className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors" placeholder="tunde@example.com" />
+              <input type="email" required className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors" placeholder="john@example.com" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Message</label>

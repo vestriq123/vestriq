@@ -392,7 +392,7 @@ function DepositContent() {
                     <input
                       type="number"
                       required
-                      placeholder="100"
+                      placeholder="299"
                       value={amount}
                       onChange={(e) => {
                         setAmount(e.target.value);

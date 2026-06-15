@@ -101,6 +101,7 @@ export default function UserDashboardPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
 
   const fetchAllData = async () => {
     try {
@@ -298,7 +299,7 @@ export default function UserDashboardPage() {
             <button
               type="button"
               onClick={() => setIsMobileNavOpen(true)}
-              className="lg:hidden p-2 hover:bg-slate-900 rounded-xl text-slate-400 hover:text-white transition-colors"
+              className="p-2 hover:bg-slate-900 rounded-xl text-slate-400 hover:text-white transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -308,10 +309,51 @@ export default function UserDashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="relative cursor-pointer hover:bg-slate-900 p-2 rounded-xl transition-colors">
-              <Bell className="w-5 h-5 text-slate-400 hover:text-white" />
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-slate-950" />
+          <div className="flex items-center gap-4 relative">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsNotifDropdownOpen(!isNotifDropdownOpen)}
+                className="relative cursor-pointer hover:bg-slate-900 p-2 rounded-xl transition-colors"
+              >
+                <Bell className="w-5 h-5 text-slate-400 hover:text-white" />
+                {notifications.some(n => !n.read) && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-slate-950" />
+                )}
+              </button>
+
+              {isNotifDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                    <h4 className="text-xs font-bold text-slate-300">Notifications</h4>
+                    <span className="text-[10px] text-indigo-400 font-semibold">{notifications.filter(n => !n.read).length} Unread</span>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto space-y-2">
+                    {notifications.length === 0 ? (
+                      <p className="text-[10px] text-slate-500 text-center py-4">No notifications yet</p>
+                    ) : (
+                      notifications.map((n) => (
+                        <div key={n.id} className={`p-2.5 rounded-xl border text-[10px] text-left ${!n.read ? "border-indigo-500/20 bg-indigo-500/5" : "border-slate-800 bg-slate-950/20"}`}>
+                          <div className="flex justify-between items-start mb-1 gap-2">
+                            <span className="font-bold text-slate-200">{n.title}</span>
+                            {!n.read && (
+                              <button
+                                type="button"
+                                onClick={() => handleMarkAsRead(n.id)}
+                                className="text-[9px] text-indigo-450 hover:text-indigo-400 font-bold uppercase tracking-wider transition-colors shrink-0"
+                              >
+                                Dismiss
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-slate-400 leading-relaxed">{n.message}</p>
+                          <span className="text-[9px] text-slate-500 mt-1 block">{new Date(n.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3 pl-4 border-l border-slate-900">
@@ -331,7 +373,7 @@ export default function UserDashboardPage() {
           {loadingData ? (
             <div className="space-y-8 animate-pulse">
               {/* SKELETON OVERVIEW CARDS */}
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+              <div className="grid grid-cols-2 gap-6">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="bg-slate-900/20 border border-slate-900/50 rounded-2xl p-5 space-y-4">
                     <div className="flex justify-between items-center">
@@ -366,7 +408,7 @@ export default function UserDashboardPage() {
           ) : (
             <>
               {/* OVERVIEW CARDS */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 gap-6">
             <div className="bg-slate-900/30 border border-slate-900 rounded-2xl p-5 shadow-sm">
               <div className="flex justify-between items-center mb-4">
                 <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Portfolio Value</span>

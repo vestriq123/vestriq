@@ -252,7 +252,7 @@ function DepositContent() {
             <button
               type="button"
               onClick={() => setIsMobileNavOpen(true)}
-              className="lg:hidden p-2 hover:bg-slate-900 rounded-xl text-slate-400 hover:text-white transition-colors"
+              className="p-2 hover:bg-slate-900 rounded-xl text-slate-400 hover:text-white transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>

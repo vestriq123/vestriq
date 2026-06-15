@@ -36,7 +36,7 @@ const companies = [
 const plans = [
   {
     name: "Standard Alpha",
-    min: "$100",
+    min: "$299",
     max: "$4,999",
     desc: "Entry-level plan designed for steady, diversified returns. Perfect for matching individual savings targets.",
     color: "from-blue-500/20 to-indigo-500/20",
@@ -53,10 +53,18 @@ const plans = [
   {
     name: "Vanguard Select",
     min: "$25,000",
-    max: "$1,000,000",
+    max: "$50,000",
     desc: "Elite tier private equity fund allocations custom tailored for high-net-worth institutional wealth profiles.",
     color: "from-purple-500/20 to-pink-500/20",
     border: "border-purple-500/30"
+  },
+  {
+    name: "Apex Sovereign",
+    min: "$50,000",
+    max: "$100,000",
+    desc: "Ultimate wealth growth container with institutional backing and strict lockup optimization.",
+    color: "from-amber-500/20 to-orange-500/20",
+    border: "border-amber-500/30"
   }
 ];
 
@@ -356,7 +364,7 @@ export default function LandingPage() {
           <p className="text-slate-400 text-sm mt-3">Choose the asset management container that matches your capital targets.</p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {plans.map((p, i) => (
             <motion.div
               key={i}

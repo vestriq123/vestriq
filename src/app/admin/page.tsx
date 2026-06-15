@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   TrendingUp,
   Users,
@@ -679,12 +680,12 @@ export default function AdminDashboardPage() {
       {/* SIDEBAR */}
       <aside className="hidden lg:flex flex-col justify-between w-64 bg-slate-900/40 border-r border-slate-900 p-6 shrink-0">
         <div className="space-y-8">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <TrendingUp className="text-indigo-400 w-6 h-6" />
             <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
               Vestriq Admin
             </span>
-          </div>
+          </Link>
 
           <div className="space-y-1">
             <button
@@ -1829,12 +1830,12 @@ export default function AdminDashboardPage() {
           <div className="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between h-full">
             <div className="space-y-8">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <Link href="/" className="flex items-center gap-2">
                   <TrendingUp className="text-indigo-400 w-6 h-6" />
                   <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
                     Vestriq Admin
                   </span>
-                </div>
+                </Link>
                 <button
                   onClick={() => setIsMobileNavOpen(false)}
                   className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400"

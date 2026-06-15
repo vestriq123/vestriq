@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   TrendingUp,
   Briefcase,
@@ -84,12 +85,12 @@ export default function InvestmentPlansPage() {
       {/* SIDEBAR */}
       <aside className="hidden lg:flex flex-col justify-between w-64 bg-slate-900/40 border-r border-slate-900 p-6 shrink-0">
         <div className="space-y-8">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <TrendingUp className="text-indigo-400 w-6 h-6" />
             <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
               Vestriq
             </span>
-          </div>
+          </Link>
 
           <div className="space-y-1">
             <button
@@ -188,7 +189,7 @@ export default function InvestmentPlansPage() {
               No investment plans are currently available. Please contact support.
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {plans.map((plan, i) => (
                 <div
                   key={plan.id}
@@ -241,12 +242,12 @@ export default function InvestmentPlansPage() {
           <div className="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between h-full">
             <div className="space-y-8">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <Link href="/" className="flex items-center gap-2">
                   <TrendingUp className="text-indigo-400 w-6 h-6" />
                   <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
                     Vestriq
                   </span>
-                </div>
+                </Link>
                 <button
                   type="button"
                   onClick={() => setIsMobileNavOpen(false)}

@@ -1,6 +1,15 @@
 import { BaseRepository } from "./baseRepository";
 import { InvestmentStatus } from "@prisma/client";
 
+function applyDynamicGrowth<T extends { status: string; createdAt: Date; amount: number; balance: number }>(inv: T): T {
+  if (inv.status === "ACTIVE") {
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysElapsed = (Date.now() - new Date(inv.createdAt).getTime()) / msPerDay;
+    inv.balance = inv.amount * Math.pow(1.05, daysElapsed);
+  }
+  return inv;
+}
+
 export class InvestmentRepository extends BaseRepository {
   async findAll() {
     const startTime = Date.now();
@@ -23,7 +32,7 @@ export class InvestmentRepository extends BaseRepository {
       orderBy: { createdAt: "desc" },
     });
     this.logQueryDuration("InvestmentRepository.findAll", Date.now() - startTime);
-    return results;
+    return results.map(applyDynamicGrowth);
   }
 
   async findByUserId(userId: string) {
@@ -39,7 +48,7 @@ export class InvestmentRepository extends BaseRepository {
       orderBy: { createdAt: "desc" },
     });
     this.logQueryDuration("InvestmentRepository.findByUserId", Date.now() - startTime);
-    return results;
+    return results.map(applyDynamicGrowth);
   }
 
   async findById(id: string) {
@@ -61,7 +70,7 @@ export class InvestmentRepository extends BaseRepository {
       },
     });
     this.logQueryDuration("InvestmentRepository.findById", Date.now() - startTime);
-    return result;
+    return result ? applyDynamicGrowth(result) : null;
   }
 
   async create(data: { userId: string; planId: string; amount: number; balance: number }) {

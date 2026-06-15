@@ -53,7 +53,7 @@ export class DepositRepository extends BaseRepository {
     return result;
   }
 
-  async create(data: { userId: string; planId: string; amount: number; walletId: string; proofUrl?: string; durationMonths?: number }) {
+  async create(data: { userId: string; planId: string; amount: number; walletId: string; proofUrl?: string; durationMonths?: number; companyName?: string }) {
     const startTime = Date.now();
     const result = await this.db.deposit.create({
       data: {
@@ -63,6 +63,7 @@ export class DepositRepository extends BaseRepository {
         walletId: data.walletId,
         proofUrl: data.proofUrl || null,
         durationMonths: data.durationMonths || 3,
+        companyName: data.companyName || null,
         status: DepositStatus.PENDING,
       },
       include: {
@@ -106,6 +107,7 @@ export class DepositRepository extends BaseRepository {
           amount: finalAmount,
           balance: finalAmount,
           durationMonths: deposit.durationMonths,
+          companyName: deposit.companyName,
           status: InvestmentStatus.ACTIVE,
         },
       });

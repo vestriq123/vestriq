@@ -11,6 +11,7 @@ const createDepositSchema = z.object({
   amount: z.number().positive("Deposit amount must be positive"),
   proofUrl: z.string().url("Invalid proof image URL").optional(),
   durationMonths: z.number().int().min(3).max(12).optional(),
+  companyName: z.string().min(1, "Please select a company to invest in"),
 });
 
 export const GET = apiHandler(async (request: Request) => {
@@ -60,13 +61,26 @@ export const POST = apiHandler(async (request: Request) => {
     );
   }
 
+  // Enforce duration based on plan name
+  let durationMonths = 3;
+  if (plan.name === "Standard Alpha") {
+    durationMonths = 3;
+  } else if (plan.name === "Premium Growth") {
+    durationMonths = 6;
+  } else if (plan.name === "Vanguard Select") {
+    durationMonths = 9;
+  } else if (plan.name === "Apex Sovereign") {
+    durationMonths = 12;
+  }
+
   const deposit = await depositRepository.create({
     userId: session.userId,
     planId: data.planId,
     amount: data.amount,
     walletId: data.walletId,
     proofUrl: data.proofUrl,
-    durationMonths: data.durationMonths,
+    durationMonths: durationMonths,
+    companyName: data.companyName,
   });
 
   return successResponse(deposit, "Deposit request initiated successfully. Awaiting manual admin confirmation.", 201);

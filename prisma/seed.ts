@@ -126,7 +126,13 @@ async function main() {
       name: "Vanguard Select",
       description: "Elite tier private equity fund options custom tailored for high net worth investors.",
       minAmount: 25000,
-      maxAmount: 1000000,
+      maxAmount: 50000,
+    },
+    {
+      name: "Apex Sovereign",
+      description: "Ultimate wealth growth container with institutional backing and strict lockup optimization.",
+      minAmount: 50000,
+      maxAmount: 100000,
     },
   ];
 

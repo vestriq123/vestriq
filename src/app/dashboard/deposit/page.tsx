@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   TrendingUp,
   Briefcase,
@@ -18,6 +19,8 @@ import {
   X,
   CheckCircle
 } from "lucide-react";
+
+import { COMPANIES } from "@/lib/constants";
 
 interface PlanData {
   id: string;
@@ -46,6 +49,7 @@ function DepositContent() {
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [amount, setAmount] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState(COMPANIES[0]?.name || "");
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -107,6 +111,20 @@ function DepositContent() {
   const selectedPlan = plans.find(p => p.id === selectedPlanId);
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
 
+  useEffect(() => {
+    if (selectedPlan) {
+      if (selectedPlan.name === "Standard Alpha") {
+        setDurationMonths(3);
+      } else if (selectedPlan.name === "Premium Growth") {
+        setDurationMonths(6);
+      } else if (selectedPlan.name === "Vanguard Select") {
+        setDurationMonths(9);
+      } else if (selectedPlan.name === "Apex Sovereign") {
+        setDurationMonths(12);
+      }
+    }
+  }, [selectedPlan, selectedPlanId]);
+
   const handleCopy = () => {
     if (!selectedWallet) return;
     navigator.clipboard.writeText(selectedWallet.address);
@@ -125,6 +143,11 @@ function DepositContent() {
     
     if (!selectedWallet) {
       setErrorMsg("Please select a deposit payment wallet.");
+      return;
+    }
+
+    if (!selectedCompany) {
+      setErrorMsg("Please select a company to invest in.");
       return;
     }
     
@@ -155,7 +178,8 @@ function DepositContent() {
           planId: selectedPlanId,
           walletId: selectedWalletId,
           amount: Number(amount),
-          durationMonths: durationMonths
+          durationMonths: durationMonths,
+          companyName: selectedCompany,
         })
       });
       const data = await res.json();
@@ -196,12 +220,12 @@ function DepositContent() {
       {/* SIDEBAR */}
       <aside className="hidden lg:flex flex-col justify-between w-64 bg-slate-900/40 border-r border-slate-900 p-6 shrink-0">
         <div className="space-y-8">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <TrendingUp className="text-indigo-400 w-6 h-6" />
             <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
               Vestriq
             </span>
-          </div>
+          </Link>
 
           <div className="space-y-1">
             <button
@@ -380,10 +404,38 @@ function DepositContent() {
                 )}
               </div>
 
-              {/* 3. ENTER AMOUNT */}
+              {/* 3. SELECT COMPANY TO INVEST IN */}
               <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-4">
                 <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs">3</span>
+                  Select Target Company
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {COMPANIES.map((company) => (
+                    <div
+                      key={company.symbol}
+                      onClick={() => {
+                        setSelectedCompany(company.name);
+                        setErrorMsg("");
+                      }}
+                      className={`cursor-pointer border rounded-2xl p-4 transition-all duration-300 flex flex-col justify-between ${selectedCompany === company.name ? "bg-indigo-650/10 border-indigo-550 shadow-md" : "bg-slate-950/40 border-slate-900 hover:border-slate-800"}`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-xs text-slate-200 font-mono">{company.symbol}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${company.positive ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                          {company.change}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-xs text-slate-350 mt-2 truncate">{company.name}</h4>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. ENTER AMOUNT */}
+              <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-4">
+                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs">4</span>
                   Enter Investment Amount
                 </h3>
                 <div className="space-y-2 max-w-sm">
@@ -409,23 +461,14 @@ function DepositContent() {
                 </div>
               </div>
 
-              {/* 4. SELECT DURATION */}
+              {/* 5. FIXED DURATION INFO */}
               <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-4">
                 <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs">4</span>
-                  Select Investment Duration
+                  <span className="w-6 h-6 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs">5</span>
+                  Investment Duration
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[3, 6, 9, 12].map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setDurationMonths(m)}
-                      className={`py-3 px-4 text-xs font-bold rounded-xl border transition-all ${durationMonths === m ? "bg-indigo-650/10 text-indigo-300 border-indigo-550 shadow-md" : "bg-slate-950/40 border-slate-900 text-slate-400 hover:text-white"}`}
-                    >
-                      {m} Months
-                    </button>
-                  ))}
+                <div className="p-4 bg-slate-950/60 border border-slate-900 rounded-2xl text-xs text-slate-400 leading-relaxed">
+                  This package is configured with a fixed investment duration of <strong className="text-indigo-400">{durationMonths} Months</strong>. Payouts and withdrawals cannot be requested until the duration ends.
                 </div>
               </div>
 
@@ -513,12 +556,12 @@ function DepositContent() {
           <div className="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between h-full">
             <div className="space-y-8">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <Link href="/" className="flex items-center gap-2">
                   <TrendingUp className="text-indigo-400 w-6 h-6" />
                   <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
                     Vestriq
                   </span>
-                </div>
+                </Link>
                 <button
                   type="button"
                   onClick={() => setIsMobileNavOpen(false)}

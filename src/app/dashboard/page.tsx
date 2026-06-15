@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   TrendingUp,
   DollarSign,
@@ -32,7 +33,7 @@ import {
 
 export default function UserDashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"analytics" | "transactions" | "logs">("analytics");
+  const [activeTab, setActiveTab] = useState<"analytics" | "investments" | "transactions" | "logs">("analytics");
   const [loadingLogout, setLoadingLogout] = useState(false);
 
   // Live Data Interfaces
@@ -50,6 +51,8 @@ export default function UserDashboardPage() {
     balance: number;
     status: string;
     createdAt: string;
+    companyName?: string | null;
+    plan?: { name: string };
     performanceRecords?: {
       id: string;
       amount: number;
@@ -102,6 +105,14 @@ export default function UserDashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
+  const [timeTick, setTimeTick] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeTick(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchAllData = async () => {
     try {
@@ -176,8 +187,18 @@ export default function UserDashboardPage() {
     }
   };
 
-  const calculatedPortfolioValue = investments.reduce((acc, inv) => acc + inv.balance, 0);
-  const calculatedTotalInvested = investments.reduce((acc, inv) => acc + inv.amount, 0);
+  const liveInvestments = investments.map(inv => {
+    if (inv.status !== "ACTIVE") return inv;
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysElapsed = (timeTick - new Date(inv.createdAt).getTime()) / msPerDay;
+    return {
+      ...inv,
+      balance: inv.amount * Math.pow(1.05, daysElapsed)
+    };
+  });
+
+  const calculatedPortfolioValue = liveInvestments.reduce((acc, inv) => acc + inv.balance, 0);
+  const calculatedTotalInvested = liveInvestments.reduce((acc, inv) => acc + inv.amount, 0);
   const calculatedWithdrawalTotal = withdrawals
     .filter(withdrawal => withdrawal.status === "APPROVED")
     .reduce((total, withdrawal) => total + withdrawal.amount, 0);
@@ -202,7 +223,7 @@ export default function UserDashboardPage() {
     ? profile.customAvailableCash
     : 0.00;
 
-  const activePlanCount = investments.filter(inv => inv.status === "ACTIVE").length;
+  const activePlanCount = liveInvestments.filter(inv => inv.status === "ACTIVE").length;
   const performanceRecords = investments
     .flatMap((investment) => investment.performanceRecords || [])
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -229,12 +250,12 @@ export default function UserDashboardPage() {
       {/* SIDEBAR */}
       <aside className="hidden lg:flex flex-col justify-between w-64 bg-slate-900/40 border-r border-slate-900 p-6 shrink-0">
         <div className="space-y-8">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <TrendingUp className="text-indigo-400 w-6 h-6" />
             <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
               Vestriq
             </span>
-          </div>
+          </Link>
 
           <div className="space-y-1">
             <button
@@ -408,7 +429,7 @@ export default function UserDashboardPage() {
           ) : (
             <>
               {/* OVERVIEW CARDS */}
-          <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-slate-900/30 border border-slate-900 rounded-2xl p-5 shadow-sm">
               <div className="flex justify-between items-center mb-4">
                 <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Portfolio Value</span>
@@ -463,13 +484,19 @@ export default function UserDashboardPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setActiveTab("analytics")}
-                    className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all ${activeTab === "analytics" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"}`}
+                    className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all ${activeTab === "analytics" ? "bg-indigo-650 text-white" : "text-slate-400 hover:text-white"}`}
                   >
                     Performance Charts
                   </button>
                   <button
+                    onClick={() => setActiveTab("investments")}
+                    className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all ${activeTab === "investments" ? "bg-indigo-650 text-white" : "text-slate-400 hover:text-white"}`}
+                  >
+                    My Holdings
+                  </button>
+                  <button
                     onClick={() => setActiveTab("transactions")}
-                    className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all ${activeTab === "transactions" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"}`}
+                    className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all ${activeTab === "transactions" ? "bg-indigo-650 text-white" : "text-slate-400 hover:text-white"}`}
                   >
                     Tables Logs
                   </button>
@@ -513,6 +540,54 @@ export default function UserDashboardPage() {
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "investments" && (
+                  <div className="space-y-6">
+                    <h4 className="text-sm font-semibold text-slate-300">My Active Investments</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {liveInvestments.filter(inv => inv.status === "ACTIVE").length === 0 ? (
+                        <p className="text-xs text-slate-500 py-4">No active investments yet. Go to Deposit Funds to start earning.</p>
+                      ) : (
+                        liveInvestments.filter(inv => inv.status === "ACTIVE").map((inv) => {
+                          const profit = inv.balance - inv.amount;
+                          const percent = inv.amount > 0 ? (profit / inv.amount) * 100 : 0;
+                          return (
+                            <div key={inv.id} className="bg-slate-950/40 border border-slate-900 rounded-2xl p-5 space-y-4">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-400">
+                                    {inv.plan?.name || "Standard Plan"}
+                                  </span>
+                                  <h4 className="font-bold text-sm text-slate-200 mt-1">
+                                    {inv.companyName || "Diversified Index"}
+                                  </h4>
+                                </div>
+                                <span className="text-[10px] bg-emerald-500/10 text-emerald-450 px-2 py-0.5 rounded-full font-bold">
+                                  +5.0% Daily Money Market
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-900/60">
+                                <div>
+                                  <span className="text-[9px] text-slate-500 block">Total Invested</span>
+                                  <span className="font-bold text-xs text-slate-300">${inv.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[9px] text-slate-500 block">Live Profit</span>
+                                  <span className="font-bold text-xs text-emerald-400">+${profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[9px] text-slate-500 block">Growth Valuation</span>
+                                  <span className="font-bold text-xs text-white">${inv.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 )}
@@ -673,12 +748,12 @@ export default function UserDashboardPage() {
           <div className="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between h-full">
             <div className="space-y-8">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <Link href="/" className="flex items-center gap-2">
                   <TrendingUp className="text-indigo-400 w-6 h-6" />
                   <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
                     Vestriq
                   </span>
-                </div>
+                </Link>
                 <button
                   type="button"
                   onClick={() => setIsMobileNavOpen(false)}

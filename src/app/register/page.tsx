@@ -5,8 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Upload, ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck, FileText } from "lucide-react";
+import { Upload, ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck, FileText, Eye, EyeOff } from "lucide-react";
 
 const registerSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -21,10 +20,10 @@ const registerSchema = z.object({
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   const {
@@ -82,7 +81,7 @@ export default function RegisterPage() {
         throw new Error(result.error?.message || result.error || "Registration failed");
       }
 
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     } catch (err) {
       const msg = err instanceof Error ? err.message : "An unexpected error occurred during registration.";
       setError(msg);
@@ -174,12 +173,21 @@ export default function RegisterPage() {
                 <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
                   Password
                 </label>
-                <input
-                  type="password"
-                  {...register("password")}
-                  className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    {...register("password")}
+                    className="w-full bg-slate-950/50 border border-slate-800 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
                 {errors.password && (
                   <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>
                 )}

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   TrendingUp,
@@ -96,7 +95,6 @@ function formatPayoutDetails(address: string) {
 }
 
 export default function AdminDashboardPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "investments" | "deposits" | "withdrawals" | "wallets" | "analytics" | "plans">("overview");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   
@@ -462,7 +460,7 @@ export default function AdminDashboardPage() {
         method: "POST",
       });
       if (response.ok) {
-        router.push("/login");
+        window.location.href = "/login";
       }
     } catch (err) {
       console.error("Logout failed", err);

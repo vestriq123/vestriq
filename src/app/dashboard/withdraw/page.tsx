@@ -154,7 +154,7 @@ export default function WithdrawalPage() {
         method: "POST",
       });
       if (response.ok) {
-        router.push("/login");
+        window.location.href = "/login";
       }
     } catch (err) {
       console.error("Logout failed", err);

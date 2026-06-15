@@ -762,7 +762,7 @@ export default function AdminDashboardPage() {
           {activeTab === "overview" && (
             <div className="space-y-8">
               {/* TOP METRICS */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-slate-900/30 border border-slate-900 rounded-2xl p-6 shadow-sm">
                   <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Assets Under Management</span>
                   <h3 className="text-2xl font-bold mt-2">$28.42M</h3>

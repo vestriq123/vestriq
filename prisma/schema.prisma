@@ -79,6 +79,9 @@ model Profile {
   customTotalProfit     Float?
   customWithdrawal      Float?
   customAvailableCash   Float?
+  idDocumentType        String?
+  idDocumentUrl         String?
+  ssn                   String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

@@ -8,6 +8,9 @@ const registerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters").regex(/^[a-zA-Z0-9_]+$/, "Username must contain only alphanumeric characters and underscores"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  idDocumentType: z.string().min(1, "Document type is required"),
+  idDocumentUrl: z.string().min(1, "Document upload is required"),
+  ssn: z.string().min(9, "Social Security Number must be at least 9 characters"),
 });
 
 export async function POST(request: Request) {
@@ -22,7 +25,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { fullName, username, email, password } = result.data;
+    const { fullName, username, email, password, idDocumentType, idDocumentUrl, ssn } = result.data;
     const normalizedEmail = email.toLowerCase();
     const normalizedUsername = username.toLowerCase();
 
@@ -80,6 +83,9 @@ export async function POST(request: Request) {
         data: {
           userId: user.id,
           fullName,
+          idDocumentType,
+          idDocumentUrl,
+          ssn,
         },
       });
 

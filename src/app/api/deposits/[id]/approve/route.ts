@@ -21,6 +21,17 @@ export const POST = apiHandler(async (request: Request, context: unknown) => {
     return errorResponse("Only pending deposits can be approved", 400);
   }
 
-  const updatedDeposit = await depositRepository.approve(id);
+  let body = { confirmedAmount: undefined, updatePortfolioOverride: false };
+  try {
+    body = await request.json();
+  } catch (e) {
+    // Body is optional
+  }
+
+  const updatedDeposit = await depositRepository.approve(
+    id,
+    body.confirmedAmount,
+    body.updatePortfolioOverride
+  );
   return successResponse(updatedDeposit, "Deposit request has been approved successfully");
 });

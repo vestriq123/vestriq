@@ -299,6 +299,12 @@ export default function AdminDashboardPage() {
   const [deposits, setDeposits] = useState<DepositData[]>([]);
   const [loadingDeposits, setLoadingDeposits] = useState(false);
 
+  const [approvingDeposit, setApprovingDeposit] = useState<DepositData | null>(null);
+  const [confirmedDepositAmount, setConfirmedDepositAmount] = useState("");
+  const [updatePortfolioOverride, setUpdatePortfolioOverride] = useState(true);
+  const [approvingDepositError, setApprovingDepositError] = useState("");
+  const [submittingApproval, setSubmittingApproval] = useState(false);
+
   interface WithdrawalData {
     id: string;
     amount: number;
@@ -361,19 +367,34 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleApproveDeposit = async (id: string) => {
+  const handleApproveDepositSubmit = async () => {
+    if (!approvingDeposit) return;
+    setSubmittingApproval(true);
+    setApprovingDepositError("");
     try {
-      const res = await fetch(`/api/deposits/${id}/approve`, {
-        method: "POST"
+      const confirmedAmount = confirmedDepositAmount ? Number(confirmedDepositAmount) : undefined;
+      const res = await fetch(`/api/deposits/${approvingDeposit.id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmedAmount,
+          updatePortfolioOverride
+        })
       });
       const data = await res.json();
       if (data.success) {
+        setApprovingDeposit(null);
         fetchDeposits();
+        fetchUsers();
+        fetchInvestments();
       } else {
-        alert(data.error?.message || "Failed to approve deposit");
+        setApprovingDepositError(data.error?.message || "Failed to approve deposit");
       }
     } catch (err) {
       console.error(err);
+      setApprovingDepositError("Network error occurred while approving deposit");
+    } finally {
+      setSubmittingApproval(false);
     }
   };
 
@@ -804,7 +825,12 @@ export default function AdminDashboardPage() {
                           <div className="flex items-center gap-3">
                             <span className="font-bold text-sm text-emerald-400">+${d.amount.toLocaleString()}</span>
                             <button
-                              onClick={() => handleApproveDeposit(d.id)}
+                              onClick={() => {
+                                setApprovingDeposit(d);
+                                setConfirmedDepositAmount(d.amount.toString());
+                                setUpdatePortfolioOverride(true);
+                                setApprovingDepositError("");
+                              }}
                               className="p-1.5 hover:bg-slate-900 rounded-lg text-emerald-400"
                             >
                               <CheckCircle className="w-5 h-5" />
@@ -1265,7 +1291,12 @@ export default function AdminDashboardPage() {
                             {d.status === "PENDING" && (
                               <div className="flex gap-2 justify-end">
                                 <button
-                                  onClick={() => handleApproveDeposit(d.id)}
+                                  onClick={() => {
+                                    setApprovingDeposit(d);
+                                    setConfirmedDepositAmount(d.amount.toString());
+                                    setUpdatePortfolioOverride(true);
+                                    setApprovingDepositError("");
+                                  }}
                                   className="bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors"
                                 >
                                   Approve
@@ -1717,6 +1748,75 @@ export default function AdminDashboardPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* DEPOSIT APPROVAL MODAL */}
+          {approvingDeposit && (
+            <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6 text-left">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-100">Approve Deposit Request</h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Review and approve deposit for <strong>{approvingDeposit.user?.profile?.fullName || approvingDeposit.user?.username || approvingDeposit.user?.email || "Investor"}</strong>.
+                  </p>
+                </div>
+
+                {approvingDepositError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
+                    {approvingDepositError}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Original Requested Amount</label>
+                    <div className="text-sm font-bold text-slate-300 bg-slate-950 border border-slate-800/40 rounded-xl px-4 py-2.5">
+                      ${approvingDeposit.amount.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Confirmed Deposited Amount ($)</label>
+                    <input
+                      type="number"
+                      value={confirmedDepositAmount}
+                      onChange={(e) => setConfirmedDepositAmount(e.target.value)}
+                      placeholder={approvingDeposit.amount.toString()}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs text-white"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-slate-950/40 border border-slate-800/60 p-3.5 rounded-xl">
+                    <input
+                      type="checkbox"
+                      id="updatePortfolioOverride"
+                      checked={updatePortfolioOverride}
+                      onChange={(e) => setUpdatePortfolioOverride(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-800 text-indigo-600 focus:ring-indigo-500 bg-slate-950"
+                    />
+                    <label htmlFor="updatePortfolioOverride" className="text-xs text-slate-300 font-medium select-none cursor-pointer">
+                      Manually update user&apos;s Portfolio Value override and total invested.
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-slate-800">
+                  <button
+                    onClick={handleApproveDepositSubmit}
+                    disabled={submittingApproval}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold py-3 rounded-xl transition-colors text-white disabled:opacity-50"
+                  >
+                    {submittingApproval ? "Approving..." : "Confirm & Approve"}
+                  </button>
+                  <button
+                    onClick={() => setApprovingDeposit(null)}
+                    className="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-xs font-semibold px-4 py-3 rounded-xl transition-colors text-slate-400"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           )}

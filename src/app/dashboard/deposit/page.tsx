@@ -15,7 +15,8 @@ import {
   ChevronRight,
   AlertCircle,
   Menu,
-  X
+  X,
+  CheckCircle
 } from "lucide-react";
 
 interface PlanData {
@@ -53,6 +54,7 @@ function DepositContent() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [durationMonths, setDurationMonths] = useState(3);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -159,7 +161,7 @@ function DepositContent() {
       const data = await res.json();
       if (data.success) {
         setShowModal(false);
-        router.push("/dashboard");
+        setIsSubmitted(true);
       } else {
         setErrorMsg(data.error?.message || "Failed to submit deposit. Please check inputs.");
         setShowModal(false);
@@ -288,7 +290,26 @@ function DepositContent() {
             </p>
           </div>
 
-          {loading ? (
+          {isSubmitted ? (
+            <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-8 shadow-sm space-y-6 text-center max-w-lg mx-auto">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                <CheckCircle className="w-8 h-8 animate-pulse" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-slate-100">Deposit Under Processing</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Your deposit notification has been logged successfully. The administrator will verify the payment against the selected network. This process usually concludes within 24 hours.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard")}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-600/10"
+              >
+                Return to Dashboard
+              </button>
+            </div>
+          ) : loading ? (
             <div className="text-center py-20 text-slate-400 text-sm">
               Syncing payment details...
             </div>

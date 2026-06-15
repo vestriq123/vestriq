@@ -74,7 +74,7 @@ export class DepositRepository extends BaseRepository {
     return result;
   }
 
-  async approve(id: string) {
+  async approve(id: string, confirmedAmount?: number, updatePortfolioOverride?: boolean) {
     const startTime = Date.now();
     const result = await this.db.$transaction(async (tx) => {
       const deposit = await tx.deposit.update({
@@ -83,6 +83,8 @@ export class DepositRepository extends BaseRepository {
         include: { plan: true },
       });
 
+      const finalAmount = typeof confirmedAmount === "number" ? confirmedAmount : deposit.amount;
+
       // Create a successful Transaction
       const ref = `TXN-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
       await tx.transaction.create({
@@ -90,7 +92,7 @@ export class DepositRepository extends BaseRepository {
           userId: deposit.userId,
           type: TransactionType.DEPOSIT,
           status: TransactionStatus.SUCCESS,
-          amount: deposit.amount,
+          amount: finalAmount,
           reference: ref,
           description: `Approved deposit for ${deposit.plan.name} Plan`,
         },
@@ -101,15 +103,33 @@ export class DepositRepository extends BaseRepository {
         data: {
           userId: deposit.userId,
           planId: deposit.planId,
-          amount: deposit.amount,
-          balance: deposit.amount,
+          amount: finalAmount,
+          balance: finalAmount,
           durationMonths: deposit.durationMonths,
           status: InvestmentStatus.ACTIVE,
         },
       });
 
+      // Update manual profile stats if requested
+      if (updatePortfolioOverride) {
+        const profile = await tx.profile.findUnique({
+          where: { userId: deposit.userId }
+        });
+        if (profile) {
+          const currentPortfolio = profile.customPortfolioValue !== null ? profile.customPortfolioValue : 0;
+          const currentTotal = profile.customTotalInvestment !== null ? profile.customTotalInvestment : 0;
+          await tx.profile.update({
+            where: { userId: deposit.userId },
+            data: {
+              customPortfolioValue: currentPortfolio + finalAmount,
+              customTotalInvestment: currentTotal + finalAmount,
+            }
+          });
+        }
+      }
+
       // Notify User
-      await notificationService.sendDepositApproved(deposit.userId, deposit.amount, deposit.plan.name, tx);
+      await notificationService.sendDepositApproved(deposit.userId, finalAmount, deposit.plan.name, tx);
 
       return deposit;
     });

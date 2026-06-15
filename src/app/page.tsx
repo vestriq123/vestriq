@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   TrendingUp,
@@ -97,9 +98,34 @@ const faqs = [
 ];
 
 export default function LandingPage() {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(null);
   const [contactSuccess, setContactSuccess] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    async function checkSession() {
+      try {
+        const res = await fetch("/api/auth/session");
+        const data = await res.json();
+        if (data.authenticated) {
+          setIsAuthenticated(true);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    checkSession();
+  }, []);
+
+  const handleTileClick = () => {
+    if (isAuthenticated) {
+      router.push("/dashboard/deposit");
+    } else {
+      router.push("/login?redirectTo=/dashboard/deposit");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white font-sans overflow-x-hidden selection:bg-indigo-500 selection:text-white">
@@ -304,7 +330,8 @@ export default function LandingPage() {
               <motion.div
                 key={i}
                 whileHover={{ scale: 1.02 }}
-                className="bg-slate-900/50 backdrop-blur-md border border-slate-900 rounded-2xl p-6 shadow-md relative overflow-hidden"
+                onClick={handleTileClick}
+                className="bg-slate-900/50 backdrop-blur-md border border-slate-900 rounded-2xl p-6 shadow-md relative overflow-hidden cursor-pointer"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>

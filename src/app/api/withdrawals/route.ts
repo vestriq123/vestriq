@@ -42,7 +42,7 @@ export const POST = apiHandler(async (request: Request) => {
 
   const data = await validateBody(request, createWithdrawalSchema);
 
-  // Calculate user's current active balance
+  // Calculate user's current active balance that has expired (unlocked)
   const activeInvestments = await db.investment.findMany({
     where: {
       userId: session.userId,
@@ -50,7 +50,13 @@ export const POST = apiHandler(async (request: Request) => {
       deletedAt: null,
     },
   });
-  const totalBalance = activeInvestments.reduce((sum, inv) => sum + inv.balance, 0);
+  const totalBalance = activeInvestments
+    .filter((inv) => {
+      const expiryDate = new Date(inv.createdAt);
+      expiryDate.setMonth(expiryDate.getMonth() + (inv.durationMonths || 3));
+      return expiryDate <= new Date();
+    })
+    .reduce((sum, inv) => sum + inv.balance, 0);
 
   // Calculate pending withdrawals to avoid double spending
   const pendingWithdrawals = await db.withdrawal.findMany({

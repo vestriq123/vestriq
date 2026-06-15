@@ -52,6 +52,7 @@ function DepositContent() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [durationMonths, setDurationMonths] = useState(3);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -151,7 +152,8 @@ function DepositContent() {
         body: JSON.stringify({
           planId: selectedPlanId,
           walletId: selectedWalletId,
-          amount: Number(amount)
+          amount: Number(amount),
+          durationMonths: durationMonths
         })
       });
       const data = await res.json();
@@ -348,7 +350,7 @@ function DepositContent() {
                       >
                         <div>
                           <h4 className="font-bold text-xs text-slate-200">{w.name}</h4>
-                          <span className="text-[10px] text-slate-500 font-mono block truncate max-w-[200px] mt-1">{w.address}</span>
+                          <span className="text-[9px] text-slate-500 font-mono block break-all mt-1">{w.address}</span>
                         </div>
                         <ChevronRight className={`w-5 h-5 transition-transform ${selectedWalletId === w.id ? "text-indigo-400 translate-x-1" : "text-slate-650"}`} />
                       </div>
@@ -383,6 +385,26 @@ function DepositContent() {
                       Amount must be between <strong>${selectedPlan.minAmount.toLocaleString()}</strong> and <strong>${selectedPlan.maxAmount.toLocaleString()}</strong>.
                     </p>
                   )}
+                </div>
+              </div>
+
+              {/* 4. SELECT DURATION */}
+              <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-4">
+                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs">4</span>
+                  Select Investment Duration
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[3, 6, 9, 12].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setDurationMonths(m)}
+                      className={`py-3 px-4 text-xs font-bold rounded-xl border transition-all ${durationMonths === m ? "bg-indigo-650/10 text-indigo-300 border-indigo-550 shadow-md" : "bg-slate-950/40 border-slate-900 text-slate-400 hover:text-white"}`}
+                    >
+                      {m} Months
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -428,16 +450,13 @@ function DepositContent() {
 
               <div className="space-y-1">
                 <label className="block text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Payment Address</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={selectedWallet.address}
-                    className="flex-1 bg-slate-950 border border-slate-850 rounded-xl px-4 py-2.5 text-xs text-slate-400 font-mono focus:outline-none"
-                  />
+                <div className="flex gap-2 items-center">
+                  <div className="flex-1 bg-slate-950 border border-slate-850 rounded-xl px-4 py-3 text-xs text-slate-400 font-mono break-all leading-relaxed select-all">
+                    {selectedWallet.address}
+                  </div>
                   <button
                     onClick={handleCopy}
-                    className="bg-slate-950 hover:bg-slate-850 border border-slate-800 p-2.5 rounded-xl text-indigo-400 hover:text-indigo-300 transition-colors shrink-0"
+                    className="bg-slate-950 hover:bg-slate-850 border border-slate-800 p-3.5 rounded-xl text-indigo-400 hover:text-indigo-300 transition-colors shrink-0"
                   >
                     <Copy className="w-4 h-4" />
                   </button>

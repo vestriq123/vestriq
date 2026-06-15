@@ -113,7 +113,7 @@ async function main() {
     {
       name: "Standard Alpha",
       description: "Entry-level plan curated for steady diversified holdings. Perfect for beginners.",
-      minAmount: 100,
+      minAmount: 299,
       maxAmount: 4999,
     },
     {

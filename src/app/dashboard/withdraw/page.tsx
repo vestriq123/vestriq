@@ -34,6 +34,18 @@ export default function WithdrawalPage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [lockedBalance, setLockedBalance] = useState(0);
+
+  interface InvestmentInfo {
+    id: string;
+    amount: number;
+    balance: number;
+    status: string;
+    createdAt: string;
+    durationMonths: number;
+    plan?: { name: string };
+  }
+  const [investments, setInvestments] = useState<InvestmentInfo[]>([]);
 
   async function loadBalanceData() {
     try {
@@ -47,11 +59,22 @@ export default function WithdrawalPage() {
       const wData = await wRes.json();
       const sessionData = await sessionRes.json();
       
-      let totalBalance = 0;
+      let totalUnlocked = 0;
+      let totalLocked = 0;
       let totalPending = 0;
       
       if (invData.success) {
-        totalBalance = invData.data.reduce((sum: number, inv: { balance: number }) => sum + inv.balance, 0);
+        setInvestments(invData.data);
+        invData.data.forEach((inv: { balance: number; createdAt: string; durationMonths: number; status: string }) => {
+          if (inv.status !== "ACTIVE") return;
+          const expiryDate = new Date(inv.createdAt);
+          expiryDate.setMonth(expiryDate.getMonth() + (inv.durationMonths || 3));
+          if (expiryDate <= new Date()) {
+            totalUnlocked += inv.balance;
+          } else {
+            totalLocked += inv.balance;
+          }
+        });
       }
       
       if (wData.success) {
@@ -60,7 +83,8 @@ export default function WithdrawalPage() {
           .reduce((sum: number, w: { amount: number }) => sum + w.amount, 0);
       }
       
-      setWithdrawableBalance(Math.max(0, totalBalance - totalPending));
+      setWithdrawableBalance(Math.max(0, totalUnlocked - totalPending));
+      setLockedBalance(totalLocked);
 
       if (sessionData.authenticated && sessionData.user?.role === "ADMIN") {
         setIsAdmin(true);
@@ -280,12 +304,46 @@ export default function WithdrawalPage() {
                 </div>
               </div>
 
-              {/* WITHDRAWABLE METRIC */}
-              <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-2">
-                <span className="text-xs text-slate-550 uppercase tracking-wider font-semibold">Maximum Withdrawable Portfolio Balance</span>
-                <h3 className="text-3xl font-extrabold text-white">${withdrawableBalance.toLocaleString()}</h3>
-                <p className="text-[10px] text-slate-550">Active investment valuation minus pending requests</p>
+              {/* BALANCE METRICS */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-2">
+                  <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Unlocked Balance</span>
+                  <h3 className="text-2xl font-extrabold text-white">${withdrawableBalance.toLocaleString()}</h3>
+                  <p className="text-[10px] text-slate-500">Available for payout requests</p>
+                </div>
+                <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-2">
+                  <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Locked Balance</span>
+                  <h3 className="text-2xl font-extrabold text-indigo-400">${lockedBalance.toLocaleString()}</h3>
+                  <p className="text-[10px] text-slate-500">Locked until plan duration ends</p>
+                </div>
               </div>
+
+              {/* ACTIVE PLANS LOCK STATUS */}
+              {investments.length > 0 && (
+                <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Subscription Locking Details</h4>
+                  <div className="space-y-3">
+                    {investments.map((inv) => {
+                      const expiryDate = new Date(inv.createdAt);
+                      expiryDate.setMonth(expiryDate.getMonth() + (inv.durationMonths || 3));
+                      const isExpired = expiryDate <= new Date();
+                      return (
+                        <div key={inv.id} className="flex justify-between items-center bg-slate-950/40 p-4 border border-slate-900 rounded-2xl text-xs">
+                          <div>
+                            <h5 className="font-bold text-slate-200">{inv.plan?.name || "Standard Plan"} (${inv.amount.toLocaleString()})</h5>
+                            <p className="text-[10px] text-slate-500 mt-1">Duration: {inv.durationMonths || 3} Months | Subscribed: {new Date(inv.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${isExpired ? "bg-emerald-500/10 text-emerald-400" : "bg-indigo-550/10 text-indigo-400"}`}>
+                              {isExpired ? "UNLOCKED" : `UNLOCKS: ${expiryDate.toLocaleDateString()}`}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* INPUT FORM MODULE */}
               <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-6">

@@ -137,6 +137,7 @@ model Investment {
   amount      Float
   balance     Float            // Current adjusted value of this specific investment
   status      InvestmentStatus @default(ACTIVE)
+  durationMonths Int           @default(3)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   deletedAt   DateTime?
@@ -172,6 +173,7 @@ model Deposit {
   walletId     String
   proofUrl     String?       // optional proof of payment / reference
   status       DepositStatus @default(PENDING)
+  durationMonths Int         @default(3)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   deletedAt    DateTime?

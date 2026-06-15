@@ -10,6 +10,7 @@ const createDepositSchema = z.object({
   walletId: z.string().uuid("Invalid wallet selection"),
   amount: z.number().positive("Deposit amount must be positive"),
   proofUrl: z.string().url("Invalid proof image URL").optional(),
+  durationMonths: z.number().int().min(3).max(12).optional(),
 });
 
 export const GET = apiHandler(async (request: Request) => {
@@ -65,6 +66,7 @@ export const POST = apiHandler(async (request: Request) => {
     amount: data.amount,
     walletId: data.walletId,
     proofUrl: data.proofUrl,
+    durationMonths: data.durationMonths,
   });
 
   return successResponse(deposit, "Deposit request initiated successfully. Awaiting manual admin confirmation.", 201);

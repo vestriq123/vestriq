@@ -466,8 +466,6 @@ function DepositContent() {
           </div>
         </div>
       )}
-    </div>
-      </main>
 
       {/* MOBILE DRAWER */}
       {isMobileNavOpen && (

@@ -542,7 +542,12 @@ export default function LandingPage() {
       <section id="contact" className="py-24 px-6 max-w-xl mx-auto z-10 relative">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold">Get in Touch</h2>
-          <p className="text-slate-400 text-sm mt-3">Have questions about corporate investing? Drop us a line.</p>
+          <p className="text-slate-400 text-sm mt-3">
+            Have questions about corporate investing? Drop us a line. You can also email us at{" "}
+            <a href="mailto:support@vestriqinvest.com" className="text-indigo-400 hover:text-indigo-300 underline transition-colors">
+              support@vestriqinvest.com
+            </a>
+          </p>
         </div>
 
         {contactSuccess ? (
@@ -644,7 +649,7 @@ export default function LandingPage() {
         </div>
 
         <div className="max-w-7xl mx-auto pt-8 border-t border-slate-900/60 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500">
-          <span>&copy; 2026 Vestriq Technologies. All rights reserved.</span>
+          <span>@2026 All rights reserved.</span>
           <div className="flex gap-6 mt-4 md:mt-0">
             <span>Privacy Policy</span>
             <span>Terms of Service</span>

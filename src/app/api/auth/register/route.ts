@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { hashPassword, setAuthCookies } from "@/lib/auth";
+import { hashPassword } from "@/lib/auth";
 import { z } from "zod";
 import { notificationService } from "@/services/notificationService";
 
@@ -93,15 +93,8 @@ export async function POST(request: Request) {
       return user;
     });
 
-    // Create session / cookies
+    // Create session / cookies payload (but do not set cookies to avoid auto-login)
     const userRoleName = newUser.role.name as "USER" | "ADMIN";
-    const payload = {
-      userId: newUser.id,
-      email: newUser.email,
-      username: newUser.username,
-      role: userRoleName,
-    };
-    await setAuthCookies(payload);
 
     // Send confirmation/welcome email
     try {

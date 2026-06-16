@@ -25,6 +25,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const {
     register,
@@ -81,7 +82,7 @@ export default function RegisterPage() {
         throw new Error(result.error?.message || result.error || "Registration failed");
       }
 
-      window.location.href = "/dashboard";
+      setIsSuccess(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "An unexpected error occurred during registration.";
       setError(msg);
@@ -89,6 +90,38 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  if (isSuccess) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-4 relative overflow-hidden">
+        {/* Decorative Orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
+
+        <div className="w-full max-w-md bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 md:p-10 shadow-2xl relative z-10 text-center space-y-6">
+          <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-2 text-emerald-450">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent">
+              Registration Successful!
+            </h1>
+            <p className="text-sm text-slate-300 mt-3 leading-relaxed">
+              Welcome to the Vestriq wealth ecosystem. Your investor credentials have been securely stored.
+            </p>
+            <p className="text-xs text-slate-450 mt-2 leading-relaxed">
+              We have dispatched a confirmation email containing onboarding instructions. Please check your inbox.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link href="/login" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg shadow-indigo-600/20 inline-block text-sm text-center">
+              Sign In to Your Dashboard
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-4 relative overflow-hidden">

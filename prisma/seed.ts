@@ -153,13 +153,13 @@ async function main() {
   const wallets = [
     {
       name: "USDT (TRC-20)",
-      address: "19hdEPSFQ4iUhtWoXHqg2E1kPCpUmaEgP8",
-      qrCodeUrl: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=19hdEPSFQ4iUhtWoXHqg2E1kPCpUmaEgP8",
+      address: "1DyawrGVfokiZTqTbQKWZiDxB5sorQwBYT",
+      qrCodeUrl: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=1DyawrGVfokiZTqTbQKWZiDxB5sorQwBYT",
     },
     {
       name: "Bitcoin (BTC)",
-      address: "19hdEPSFQ4iUhtWoXHqg2E1kPCpUmaEgP8",
-      qrCodeUrl: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=19hdEPSFQ4iUhtWoXHqg2E1kPCpUmaEgP8",
+      address: "1DyawrGVfokiZTqTbQKWZiDxB5sorQwBYT",
+      qrCodeUrl: "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=1DyawrGVfokiZTqTbQKWZiDxB5sorQwBYT",
     },
   ];
 

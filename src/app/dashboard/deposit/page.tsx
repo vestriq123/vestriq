@@ -493,15 +493,16 @@ function DepositContent() {
             </div>
 
             {/* QR Code */}
-            <div className="flex flex-col items-center justify-center p-4 bg-slate-950 rounded-2xl border border-slate-800">
-              <div className="w-36 h-36 bg-slate-900 rounded-xl flex items-center justify-center relative overflow-hidden">
+            <div className="flex flex-col items-center justify-center p-6 bg-slate-950 rounded-3xl border border-slate-800/80 shadow-xl relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 to-emerald-500/5 opacity-40 pointer-events-none" />
+              <div className="w-52 h-52 bg-white rounded-2xl flex items-center justify-center relative overflow-hidden p-2 shadow-md">
                 <img 
-                  src={selectedWallet.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(selectedWallet.address)}`} 
+                  src={selectedWallet.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(selectedWallet.address)}`} 
                   alt={`${selectedWallet.name} QR Code`} 
-                  className="w-32 h-32 object-contain rounded-lg"
+                  className="w-48 h-48 object-contain"
                 />
               </div>
-              <span className="text-[10px] text-indigo-400 font-bold mt-3 uppercase tracking-wider">{selectedWallet.name} Network</span>
+              <span className="text-xs text-indigo-400 font-extrabold mt-4 uppercase tracking-widest">{selectedWallet.name} Network</span>
             </div>
 
             <div className="space-y-4">

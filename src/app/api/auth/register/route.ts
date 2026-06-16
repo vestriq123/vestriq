@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword, setAuthCookies } from "@/lib/auth";
 import { z } from "zod";
+import { notificationService } from "@/services/notificationService";
 
 const registerSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -101,6 +102,13 @@ export async function POST(request: Request) {
       role: userRoleName,
     };
     await setAuthCookies(payload);
+
+    // Send confirmation/welcome email
+    try {
+      await notificationService.sendRegistrationConfirmation(newUser.id);
+    } catch (emailErr) {
+      console.error("Failed to send welcome email:", emailErr);
+    }
 
     return NextResponse.json({
       success: true,

@@ -54,17 +54,14 @@ export class EmailService {
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
     .header {
-      padding: 40px 30px;
+      padding: 35px 30px;
       text-align: center;
-      border-b: 1px solid #1e293b;
-      background: linear-gradient(135deg, #4f46e5 0%, #10b981 100%);
+      border-bottom: 1px solid #1e293b;
+      background: #0f172a;
     }
-    .header h1 {
-      margin: 0;
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -0.05em;
-      color: #ffffff;
+    .header .logo {
+      display: inline-block;
+      vertical-align: middle;
     }
     .content {
       padding: 40px 30px;
@@ -102,7 +99,13 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <h1>Vestriq Wealth</h1>
+      <div class="logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; display: inline-block;">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+          <polyline points="16 7 22 7 22 13"></polyline>
+        </svg>
+        <span style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.05em; margin-left: 8px; vertical-align: middle; display: inline-block;">Vestriq</span>
+      </div>
     </div>
     <div class="content">
       ${options.bodyHtml}

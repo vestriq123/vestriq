@@ -241,6 +241,73 @@ export class NotificationService {
       bodyHtml,
     });
   }
+
+  async sendRegistrationConfirmation(userId: string, tx?: DbClient) {
+    const client = this.getClient(tx);
+    const user = await client.user.findUnique({
+      where: { id: userId },
+      select: {
+        email: true,
+        username: true,
+        profile: {
+          select: {
+            fullName: true
+          }
+        }
+      }
+    });
+
+    if (!user) return;
+
+    const title = "Welcome to Vestriq!";
+    const message = "Your registration was successful. Welcome to your next-gen wealth management terminal.";
+
+    // 1. Create In-App Notification
+    await client.notification.create({
+      data: {
+        userId,
+        title,
+        message,
+      },
+    });
+
+    // 2. Send Email
+    const displayName = user.profile?.fullName || user.username;
+    const bodyHtml = `
+      <p>Hello <span class="highlight">${displayName}</span>,</p>
+      <p>Thank you for registering your investor account with <strong>Vestriq</strong>. Your next-generation wealth management terminal is now fully active.</p>
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid #1e293b; padding: 25px; border-radius: 16px; margin: 25px 0;">
+        <h3 style="color: #f8fafc; margin-top: 0; font-size: 16px; border-bottom: 1px solid #1e293b; padding-bottom: 10px;">Account Registration Summary</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="color: #475569; padding: 8px 0;">Username</td>
+            <td style="color: #f8fafc; font-weight: 600; text-align: right; padding: 8px 0;">${user.username}</td>
+          </tr>
+          <tr>
+            <td style="color: #475569; padding: 8px 0;">Registered Email</td>
+            <td style="color: #f8fafc; font-weight: 600; text-align: right; padding: 8px 0;">${user.email}</td>
+          </tr>
+          <tr>
+            <td style="color: #475569; padding: 8px 0;">Status</td>
+            <td style="color: #10b981; font-weight: 750; text-align: right; padding: 8px 0; font-size: 13px; text-transform: uppercase;">Verified & Active</td>
+          </tr>
+        </table>
+      </div>
+      <p>To begin optimizing your capital allocations:</p>
+      <ol style="padding-left: 20px; color: #94a3b8; font-size: 14px; line-height: 1.8;">
+        <li>Log in to your private investor dashboard.</li>
+        <li>Browse our curated, active-manager Investment Plans.</li>
+        <li>Transmit crypto funds to secure your designated investment slot.</li>
+      </ol>
+      <a href="${APP_URL}/dashboard" class="btn">Access Dashboard Terminal</a>
+    `;
+
+    await emailService.sendEmail({
+      to: user.email,
+      subject: "Welcome to Vestriq - Registration Confirmed",
+      bodyHtml,
+    });
+  }
 }
 
 export const notificationService = new NotificationService();

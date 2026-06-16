@@ -138,6 +138,9 @@ export default function AdminDashboardPage() {
     customTotalProfit: number | null;
     customWithdrawal: number | null;
     customAvailableCash: number | null;
+    idDocumentType: string | null;
+    idDocumentUrl: string | null;
+    ssn: string | null;
   }
 
   interface UserData {
@@ -155,6 +158,7 @@ export default function AdminDashboardPage() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [selectedUserForOverride, setSelectedUserForOverride] = useState<UserData | null>(null);
+  const [selectedUserForDetails, setSelectedUserForDetails] = useState<UserData | null>(null);
   const [overridePortfolioValue, setOverridePortfolioValue] = useState("");
   const [overrideTotalInvestment, setOverrideTotalInvestment] = useState("");
   const [overrideTotalProfit, setOverrideTotalProfit] = useState("");
@@ -955,14 +959,22 @@ export default function AdminDashboardPage() {
                                 ACTIVE
                               </span>
                             </td>
-                            <td className="py-4 text-right">
-                              <button
-                                onClick={() => handleOpenOverrideModal(u)}
-                                className="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
-                              >
-                                Edit Stats
-                              </button>
-                            </td>
+                             <td className="py-4 text-right">
+                               <div className="flex justify-end gap-3 items-center">
+                                 <button
+                                   onClick={() => setSelectedUserForDetails(u)}
+                                   className="text-emerald-450 hover:text-emerald-400 font-semibold cursor-pointer"
+                                 >
+                                   View Details
+                                 </button>
+                                 <button
+                                   onClick={() => handleOpenOverrideModal(u)}
+                                   className="text-indigo-450 hover:text-indigo-400 font-semibold cursor-pointer"
+                                 >
+                                   Edit Stats
+                                 </button>
+                               </div>
+                             </td>
                           </tr>
                         ))}
                     </tbody>
@@ -1062,6 +1074,105 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
               )}
+
+               {/* DETAILS MODAL */}
+               {selectedUserForDetails && (
+                 <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+                   <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5">
+                     <div className="flex justify-between items-start border-b border-slate-800 pb-4">
+                       <div>
+                         <h3 className="text-lg font-bold text-slate-100">Investor Account Profile</h3>
+                         <p className="text-xs text-slate-400 mt-1">Full profile data and validation credentials</p>
+                       </div>
+                       <button 
+                         onClick={() => setSelectedUserForDetails(null)}
+                         className="text-slate-400 hover:text-white transition-colors"
+                       >
+                         <X className="w-5 h-5" />
+                       </button>
+                     </div>
+ 
+                     <div className="grid grid-cols-2 gap-4 text-xs">
+                       <div>
+                         <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Full Name</span>
+                         <p className="font-semibold text-white mt-0.5">{selectedUserForDetails.profile?.fullName || "Not Provided"}</p>
+                       </div>
+                       <div>
+                         <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Username</span>
+                         <p className="font-mono text-white mt-0.5">{selectedUserForDetails.username}</p>
+                       </div>
+                       <div>
+                         <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Email Address</span>
+                         <p className="text-white mt-0.5">{selectedUserForDetails.email}</p>
+                       </div>
+                       <div>
+                         <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">System Role</span>
+                         <p className="text-white mt-0.5">
+                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${selectedUserForDetails.role?.name === "ADMIN" ? "bg-indigo-500/10 text-indigo-400" : "bg-slate-500/10 text-slate-400"}`}>
+                             {selectedUserForDetails.role?.name || "USER"}
+                           </span>
+                         </p>
+                       </div>
+                       <div>
+                         <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Registered Date</span>
+                         <p className="text-white mt-0.5">{new Date(selectedUserForDetails.createdAt).toLocaleString()}</p>
+                       </div>
+                       <div>
+                         <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Social Security Number (SSN)</span>
+                         <p className="font-mono text-white mt-0.5">{selectedUserForDetails.profile?.ssn || "Not Provided"}</p>
+                       </div>
+                     </div>
+ 
+                     <div className="border-t border-slate-800 pt-4 space-y-3">
+                       <h4 className="text-xs font-semibold text-slate-300">Identity Document Verification</h4>
+                       <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                         <div className="flex justify-between items-center text-xs">
+                           <span className="text-slate-500 font-semibold">Document Type:</span>
+                           <span className="text-white font-semibold">{selectedUserForDetails.profile?.idDocumentType || "None Uploaded"}</span>
+                         </div>
+                         {selectedUserForDetails.profile?.idDocumentUrl ? (
+                           <div className="space-y-3">
+                             <div className="flex items-center gap-2">
+                               <span className="text-slate-500 text-xs font-semibold">Uploaded File:</span>
+                               <a 
+                                 href={selectedUserForDetails.profile.idDocumentUrl} 
+                                 target="_blank" 
+                                 rel="noreferrer" 
+                                 className="text-indigo-400 hover:text-indigo-300 text-xs font-semibold underline"
+                               >
+                                 View Raw Document
+                               </a>
+                             </div>
+                             {/* Render image preview if it's likely an image */}
+                             {selectedUserForDetails.profile.idDocumentUrl && 
+                              (selectedUserForDetails.profile.idDocumentUrl.match(/\.(jpeg|jpg|gif|png|webp)/i) || 
+                               selectedUserForDetails.profile.idDocumentUrl.includes("cloudinary.com")) && (
+                               <div className="border border-slate-850 rounded-xl overflow-hidden bg-slate-900 flex justify-center max-h-48">
+                                 <img 
+                                   src={selectedUserForDetails.profile.idDocumentUrl} 
+                                   alt="ID Document Upload" 
+                                   className="object-contain max-h-48 w-full"
+                                 />
+                               </div>
+                             )}
+                           </div>
+                         ) : (
+                           <p className="text-xs text-slate-650 italic">No document image uploaded.</p>
+                         )}
+                       </div>
+                     </div>
+ 
+                     <div className="border-t border-slate-800 pt-4 flex justify-end">
+                       <button
+                         onClick={() => setSelectedUserForDetails(null)}
+                         className="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-xs font-semibold px-5 py-2.5 rounded-xl transition-colors text-slate-400"
+                       >
+                         Close Details
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+               )}
             </div>
           )}
 

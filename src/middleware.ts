@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import { JWTPayload } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-for-development";
 
@@ -59,10 +60,47 @@ async function verifyJwtSignature(token: string): Promise<JWTPayload | null> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // 1. User-Agent Bot / Scraper filtering
+  const userAgent = request.headers.get("user-agent") || "";
+  const botRegex = /curl|wget|python-requests|scrape|headless|phantomjs|selenium|playwright|puppeteer|zgrab|nmap|censys|sqlmap/i;
+  if (botRegex.test(userAgent)) {
+    return new NextResponse("Access forbidden for automated scripts.", { status: 403 });
+  }
+
+  // 2. API Rate Limiting
+  if (pathname.startsWith("/api")) {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "local-ip";
+    
+    // Apply stricter limits on authentication routes
+    const isAuthEndpoint = pathname.includes("/api/auth/login") || 
+                           pathname.includes("/api/auth/register") || 
+                           pathname.includes("/api/auth/verify-email") || 
+                           pathname.includes("/api/auth/reset-password");
+                           
+    const limit = isAuthEndpoint ? 10 : 60;
+    const windowMs = 60000; // 1 minute
+    
+    const isLimited = checkRateLimit(ip, pathname, limit, windowMs);
+    if (isLimited) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: "Too many requests. Please try again later.",
+            code: 429
+          }
+        },
+        { status: 429 }
+      );
+    }
+  }
+
   const isDashboardRoute = pathname.startsWith("/dashboard");
   const isAdminRoute = pathname.startsWith("/admin");
+  const isPendingRoute = pathname === "/verification-pending";
+  const isRejectedRoute = pathname === "/verification-rejected";
 
-  if (isDashboardRoute || isAdminRoute) {
+  if (isDashboardRoute || isAdminRoute || isPendingRoute || isRejectedRoute) {
     const token = request.cookies.get("accessToken")?.value;
     if (!token) {
       return NextResponse.redirect(new URL("/login", request.url));
@@ -76,6 +114,21 @@ export async function middleware(request: NextRequest) {
     if (isAdminRoute && payload.role !== "ADMIN") {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
+
+    if (payload.role === "USER") {
+      const status = payload.verificationStatus;
+      if (status === "PENDING" && !isPendingRoute) {
+        return NextResponse.redirect(new URL("/verification-pending", request.url));
+      }
+      if (status === "REJECTED" && !isRejectedRoute) {
+        return NextResponse.redirect(new URL("/verification-rejected", request.url));
+      }
+      if (status === "APPROVED" && (isPendingRoute || isRejectedRoute)) {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
+    } else if (payload.role === "ADMIN" && (isPendingRoute || isRejectedRoute)) {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
   }
 
   const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/forgot-password") || pathname.startsWith("/reset-password");
@@ -84,6 +137,15 @@ export async function middleware(request: NextRequest) {
     if (token) {
       const payload = await verifyJwtSignature(token);
       if (payload) {
+        if (payload.role === "USER") {
+          const status = payload.verificationStatus;
+          if (status === "PENDING") {
+            return NextResponse.redirect(new URL("/verification-pending", request.url));
+          }
+          if (status === "REJECTED") {
+            return NextResponse.redirect(new URL("/verification-rejected", request.url));
+          }
+        }
         return NextResponse.redirect(new URL("/dashboard", request.url));
       }
     }
@@ -96,9 +158,13 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/admin/:path*",
+    "/api/:path*",
     "/login",
     "/register",
     "/forgot-password",
-    "/reset-password"
+    "/reset-password",
+    "/verification-pending",
+    "/verification-rejected"
   ],
 };
+

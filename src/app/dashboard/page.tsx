@@ -52,7 +52,8 @@ export default function UserDashboardPage() {
     status: string;
     createdAt: string;
     companyName?: string | null;
-    plan?: { name: string };
+    plan?: { id: string; name: string } | null;
+    planId?: string;
     performanceRecords?: {
       id: string;
       amount: number;
@@ -61,6 +62,7 @@ export default function UserDashboardPage() {
       createdAt: string;
     }[];
   }
+
 
   interface TransactionInfo {
     id: string;
@@ -107,6 +109,61 @@ export default function UserDashboardPage() {
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
   const [timeTick, setTimeTick] = useState(Date.now());
 
+  interface PlanData {
+    id: string;
+    name: string;
+    description: string;
+    minAmount: number;
+    maxAmount: number;
+  }
+  const [availablePlans, setAvailablePlans] = useState<PlanData[]>([]);
+  const [upgradingInvestment, setUpgradingInvestment] = useState<InvestmentInfo | null>(null);
+  const [selectedUpgradePlanId, setSelectedUpgradePlanId] = useState("");
+  const [upgradingLoading, setUpgradingLoading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState("");
+
+  const fetchAvailablePlans = async () => {
+    try {
+      const res = await fetch("/api/investment-plans");
+      const json = await res.json();
+      if (json.success) {
+        setAvailablePlans(json.data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleOpenUpgradeModal = (inv: InvestmentInfo) => {
+    setUpgradingInvestment(inv);
+    setSelectedUpgradePlanId("");
+    setUpgradeError("");
+  };
+
+  const handleUpgradeSubmit = async () => {
+    if (!upgradingInvestment || !selectedUpgradePlanId) return;
+    setUpgradingLoading(true);
+    setUpgradeError("");
+    try {
+      const res = await fetch(`/api/investments/${upgradingInvestment.id}/upgrade`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: selectedUpgradePlanId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setUpgradingInvestment(null);
+        fetchAllData();
+      } else {
+        setUpgradeError(json.error?.message || "Failed to upgrade investment plan");
+      }
+    } catch (err) {
+      setUpgradeError("Network error occurred during upgrade");
+    } finally {
+      setUpgradingLoading(false);
+    }
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeTick(Date.now());
@@ -152,7 +209,9 @@ export default function UserDashboardPage() {
 
   useEffect(() => {
     fetchAllData();
+    fetchAvailablePlans();
   }, []);
+
 
   const handleLogout = async () => {
     setLoadingLogout(true);
@@ -199,9 +258,7 @@ export default function UserDashboardPage() {
 
   const calculatedPortfolioValue = liveInvestments.reduce((acc, inv) => acc + inv.balance, 0);
   const calculatedTotalInvested = liveInvestments.reduce((acc, inv) => acc + inv.amount, 0);
-  const calculatedWithdrawalTotal = withdrawals
-    .filter(withdrawal => withdrawal.status === "APPROVED")
-    .reduce((total, withdrawal) => total + withdrawal.amount, 0);
+  const calculatedWithdrawalTotal = withdrawals.reduce((total, w) => total + w.amount, 0);
 
   const portfolioValue = profile?.customPortfolioValue !== null && profile?.customPortfolioValue !== undefined
     ? profile.customPortfolioValue
@@ -463,16 +520,7 @@ export default function UserDashboardPage() {
                 <ArrowUpRight className="w-4 h-4 text-red-400" />
               </div>
               <h3 className="text-xl font-bold">${approvedWithdrawalTotal.toLocaleString()}</h3>
-              <p className="text-[10px] text-red-400 mt-2 font-semibold">Processed Successfully</p>
-            </div>
-
-            <div className="bg-slate-900/30 border border-slate-900 rounded-2xl p-5 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Available Cash</span>
-                <Wallet className="w-4 h-4 text-indigo-400" />
-              </div>
-              <h3 className="text-xl font-bold">${availableCash.toLocaleString()}</h3>
-              <p className="text-[10px] text-slate-500 mt-2 font-semibold">Wallet Funding Balance</p>
+              <p className="text-[10px] text-red-400 mt-2 font-semibold">Total Requested Payout</p>
             </div>
           </div>
 
@@ -569,7 +617,6 @@ export default function UserDashboardPage() {
                                   +5.0% Daily Money Market
                                 </span>
                               </div>
-
                               <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-900/60">
                                 <div>
                                   <span className="text-[9px] text-slate-500 block">Total Invested</span>
@@ -583,6 +630,14 @@ export default function UserDashboardPage() {
                                   <span className="text-[9px] text-slate-500 block">Growth Valuation</span>
                                   <span className="font-bold text-xs text-white">${inv.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
+                              </div>
+                              <div className="pt-3 border-t border-slate-900/60 flex justify-end">
+                                <button
+                                  onClick={() => handleOpenUpgradeModal(inv)}
+                                  className="text-[10px] font-bold px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all cursor-pointer"
+                                >
+                                  Upgrade Plan
+                                </button>
                               </div>
                             </div>
                           );
@@ -833,6 +888,77 @@ export default function UserDashboardPage() {
             </div>
           </div>
           <div className="flex-1" onClick={() => setIsMobileNavOpen(false)} />
+        </div>
+      )}
+
+      {/* UPGRADE PLAN MODAL */}
+      {upgradingInvestment && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-left">
+            <div>
+              <h3 className="text-lg font-bold text-slate-100">Upgrade Investment Package</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Transition your active holding <strong>{upgradingInvestment.companyName || "Diversified Index"}</strong> to a higher yielding wealth structure.
+              </p>
+            </div>
+
+            {upgradeError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
+                {upgradeError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-2">Current Active Plan</label>
+              <div className="bg-slate-950/40 border border-slate-850 rounded-xl p-3 text-xs flex justify-between">
+                <span className="font-semibold text-slate-200">{upgradingInvestment.plan?.name || "Standard Plan"}</span>
+                <span className="font-mono text-slate-400">${upgradingInvestment.amount.toLocaleString()} Principal</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Select New Upgrade Package</label>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {availablePlans
+                  .filter(p => p.id !== upgradingInvestment.plan?.id)
+                  .map((plan) => (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => setSelectedUpgradePlanId(plan.id)}
+                      className={`w-full text-left p-3.5 rounded-xl border transition-all flex justify-between items-center ${selectedUpgradePlanId === plan.id ? "bg-indigo-600/10 border-indigo-500 text-indigo-300" : "bg-slate-950/30 border-slate-850 text-slate-400 hover:border-slate-700"}`}
+                    >
+                      <div>
+                        <h5 className="font-bold text-xs text-slate-200">{plan.name}</h5>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Limits: ${plan.minAmount.toLocaleString()} - ${plan.maxAmount.toLocaleString()}</p>
+                      </div>
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-450 px-2 py-0.5 rounded font-bold font-mono">
+                        Upgrade
+                      </span>
+                    </button>
+                  ))}
+                {availablePlans.filter(p => p.id !== upgradingInvestment.plan?.id).length === 0 && (
+                  <p className="text-xs text-slate-550 italic text-center py-4">No other upgrade plans available.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-slate-800">
+              <button
+                onClick={handleUpgradeSubmit}
+                disabled={upgradingLoading || !selectedUpgradePlanId}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold py-3 rounded-xl transition-colors text-white disabled:opacity-50 cursor-pointer"
+              >
+                {upgradingLoading ? "Processing Upgrade..." : "Confirm Upgrade"}
+              </button>
+              <button
+                onClick={() => setUpgradingInvestment(null)}
+                className="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-xs font-semibold px-5 py-3 rounded-xl transition-colors text-slate-400 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

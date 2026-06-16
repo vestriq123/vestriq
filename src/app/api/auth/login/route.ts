@@ -60,6 +60,7 @@ export async function POST(request: Request) {
       email: user.email,
       username: user.username,
       role: userRoleName,
+      verificationStatus: user.verificationStatus,
     };
     await setAuthCookies(payload);
 
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
         email: user.email,
         username: user.username,
         role: userRoleName,
+        verificationStatus: user.verificationStatus,
         fullName: user.profile?.fullName || "",
       }
     });

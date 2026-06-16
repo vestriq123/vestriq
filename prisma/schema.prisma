@@ -41,6 +41,12 @@ enum InvestmentStatus {
   CANCELLED
 }
 
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id           String    @id @default(uuid())
   email        String    @unique
@@ -48,6 +54,7 @@ model User {
   passwordHash         String
   roleId               String
   emailVerified        Boolean   @default(false)
+  verificationStatus   VerificationStatus @default(PENDING)
   verificationToken    String?
   resetToken           String?
   resetTokenExpiry     DateTime?

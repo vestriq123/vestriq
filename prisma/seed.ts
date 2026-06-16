@@ -82,6 +82,7 @@ async function main() {
       username: "vestriqadmin",
       passwordHash: adminPasswordHash,
       roleId: adminRole.id,
+      verificationStatus: "APPROVED",
       profile: {
         create: {
           fullName: "Vestriq System Administrator",
@@ -98,6 +99,7 @@ async function main() {
       username: "investorone",
       passwordHash: userPasswordHash,
       roleId: userRole.id,
+      verificationStatus: "APPROVED",
       profile: {
         create: {
           fullName: "Premium Investor",

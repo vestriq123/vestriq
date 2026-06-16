@@ -1,0 +1,12 @@
+# http://www.robotstxt.org/robotstxt.html
+User-agent: *
+
+# Block access to authenticated areas and endpoints
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+
+# Allow indexing for marketing pages
+Allow: /
+Allow: /login
+Allow: /register

@@ -249,6 +249,7 @@ export class NotificationService {
       select: {
         email: true,
         username: true,
+        verificationStatus: true,
         profile: {
           select: {
             fullName: true
@@ -259,8 +260,11 @@ export class NotificationService {
 
     if (!user) return;
 
-    const title = "Welcome to Vestriq!";
-    const message = "Your registration was successful. Welcome to your next-gen wealth management terminal.";
+    const isApproved = user.verificationStatus === "APPROVED";
+    const title = isApproved ? "Welcome to Vestriq!" : "Account Registration Pending Verification";
+    const message = isApproved 
+      ? "Your registration was successful. Welcome to your next-gen wealth management terminal."
+      : "Your registration was successful. Please await admin verification of your uploaded ID document.";
 
     // 1. Create In-App Notification
     await client.notification.create({
@@ -273,9 +277,14 @@ export class NotificationService {
 
     // 2. Send Email
     const displayName = user.profile?.fullName || user.username;
+    const statusText = isApproved ? "Verified & Active" : "Awaiting ID Verification";
+    const statusColor = isApproved ? "#10b981" : "#eab308";
+    
     const bodyHtml = `
       <p>Hello <span class="highlight">${displayName}</span>,</p>
-      <p>Thank you for registering your investor account with <strong>Vestriq</strong>. Your next-generation wealth management terminal is now fully active.</p>
+      <p>${isApproved 
+        ? "Thank you for registering your investor account with <strong>Vestriq</strong>. Your next-generation wealth management terminal is now fully active."
+        : "Thank you for registering your investor account with <strong>Vestriq</strong>. To safeguard investor allocations, all profiles require administrative document verification before trading services are unlocked."}</p>
       <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid #1e293b; padding: 25px; border-radius: 16px; margin: 25px 0;">
         <h3 style="color: #f8fafc; margin-top: 0; font-size: 16px; border-bottom: 1px solid #1e293b; padding-bottom: 10px;">Account Registration Summary</h3>
         <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
@@ -289,10 +298,11 @@ export class NotificationService {
           </tr>
           <tr>
             <td style="color: #475569; padding: 8px 0;">Status</td>
-            <td style="color: #10b981; font-weight: 750; text-align: right; padding: 8px 0; font-size: 13px; text-transform: uppercase;">Verified & Active</td>
+            <td style="color: ${statusColor}; font-weight: 750; text-align: right; padding: 8px 0; font-size: 13px; text-transform: uppercase;">${statusText}</td>
           </tr>
         </table>
       </div>
+      ${isApproved ? `
       <p>To begin optimizing your capital allocations:</p>
       <ol style="padding-left: 20px; color: #94a3b8; font-size: 14px; line-height: 1.8;">
         <li>Log in to your private investor dashboard.</li>
@@ -300,15 +310,177 @@ export class NotificationService {
         <li>Transmit crypto funds to secure your designated investment slot.</li>
       </ol>
       <a href="${APP_URL}/dashboard" class="btn">Access Dashboard Terminal</a>
+      ` : `
+      <p><strong>Next Steps:</strong> Our compliance team is currently reviewing your uploaded ID credentials and SSN. You will receive an email notification as soon as your account has been verified and approved.</p>
+      <a href="${APP_URL}/login" class="btn">Monitor Approval Status</a>
+      `}
     `;
 
     await emailService.sendEmail({
       to: user.email,
-      subject: "Welcome to Vestriq - Registration Confirmed",
+      subject: isApproved ? "Welcome to Vestriq - Registration Confirmed" : "Vestriq - Verification Pending Review",
+      bodyHtml,
+    });
+  }
+
+  async sendUserApproved(userId: string, tx?: DbClient) {
+    const client = this.getClient(tx);
+    const user = await client.user.findUnique({
+      where: { id: userId },
+      select: {
+        email: true,
+        username: true,
+        profile: {
+          select: {
+            fullName: true
+          }
+        }
+      }
+    });
+
+    if (!user) return;
+
+    const title = "Account Verified & Approved!";
+    const message = "Congratulations! Your identity document has been verified. Your investor portal is now fully active.";
+
+    await client.notification.create({
+      data: {
+        userId,
+        title,
+        message,
+      },
+    });
+
+    const displayName = user.profile?.fullName || user.username;
+    const bodyHtml = `
+      <p>Hello <span class="highlight">${displayName}</span>,</p>
+      <p>We are excited to inform you that your identity documents and investor registration have been successfully verified and approved by our security compliance desk.</p>
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid #1e293b; padding: 25px; border-radius: 16px; margin: 25px 0;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="color: #475569; padding: 8px 0;">Account Status</td>
+            <td style="color: #10b981; font-weight: 750; text-align: right; padding: 8px 0; font-size: 13px; text-transform: uppercase;">ACTIVE / VERIFIED</td>
+          </tr>
+          <tr>
+            <td style="color: #475569; padding: 8px 0;">Unlocked Capabilities</td>
+            <td style="color: #f8fafc; font-weight: 600; text-align: right; padding: 8px 0;">Deposit, Investment Plans, Payouts</td>
+          </tr>
+        </table>
+      </div>
+      <p>Your access block has been removed. You can now fund your wallet, subscribe to investment structures, and start generating premium yields.</p>
+      <a href="${APP_URL}/dashboard" class="btn">Launch Dashboard Terminal</a>
+    `;
+
+    await emailService.sendEmail({
+      to: user.email,
+      subject: "[Vestriq] Account Approved & Verification Success",
+      bodyHtml,
+    });
+  }
+
+  async sendUserRejected(userId: string, reason?: string, tx?: DbClient) {
+    const client = this.getClient(tx);
+    const user = await client.user.findUnique({
+      where: { id: userId },
+      select: {
+        email: true,
+        username: true,
+        profile: {
+          select: {
+            fullName: true
+          }
+        }
+      }
+    });
+
+    if (!user) return;
+
+    const title = "Account Verification Rejected";
+    const message = `Your document verification was rejected. Reason: ${reason || "Provided documents do not meet verification criteria."}`;
+
+    await client.notification.create({
+      data: {
+        userId,
+        title,
+        message,
+      },
+    });
+
+    const displayName = user.profile?.fullName || user.username;
+    const bodyHtml = `
+      <p>Hello <span class="highlight">${displayName}</span>,</p>
+      <p>We regret to inform you that your investor registration and identity verification request was not approved during our manual document audit.</p>
+      <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); padding: 25px; border-radius: 16px; margin: 25px 0;">
+        <h4 style="color: #ef4444; margin-top: 0; font-size: 14px; font-weight: 700;">Reason for Rejection:</h4>
+        <p style="color: #f8fafc; font-size: 13px; line-height: 1.6; margin-bottom: 0;">${reason || "The uploaded ID document image was unclear, invalid, or expired. Please upload a clear photo of your government-issued ID card or driver's license."}</p>
+      </div>
+      <p>Please log in to review your profile details or contact support for help with document verification.</p>
+      <a href="${APP_URL}/login" class="btn">View Account Profile</a>
+    `;    await emailService.sendEmail({
+      to: user.email,
+      subject: "[Vestriq] Verification Rejected - Action Required",
+      bodyHtml,
+    });
+  }
+
+  async sendPlanUpgraded(userId: string, oldPlanName: string, newPlanName: string, tx?: DbClient) {
+    const client = this.getClient(tx);
+    const user = await client.user.findUnique({
+      where: { id: userId },
+      select: {
+        email: true,
+        username: true,
+        profile: {
+          select: {
+            fullName: true
+          }
+        }
+      }
+    });
+
+    if (!user) return;
+
+    const title = "Investment Plan Upgraded";
+    const message = `Successfully upgraded your investment plan from ${oldPlanName} to ${newPlanName}.`;
+
+    await client.notification.create({
+      data: {
+        userId,
+        title,
+        message,
+      },
+    });
+
+    const displayName = user.profile?.fullName || user.username;
+    const bodyHtml = `
+      <p>Hello <span class="highlight">${displayName}</span>,</p>
+      <p>Your investment plan upgrade has been processed successfully.</p>
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid #1e293b; padding: 20px; border-radius: 16px; margin: 20px 0;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="color: #475569; padding: 6px 0;">Previous Plan</td>
+            <td style="color: #94a3b8; text-decoration: line-through; text-align: right; padding: 6px 0;">${oldPlanName}</td>
+          </tr>
+          <tr>
+            <td style="color: #475569; padding: 6px 0;">New Active Plan</td>
+            <td style="color: #10b981; font-weight: 700; text-align: right; padding: 6px 0; font-size: 15px;">${newPlanName}</td>
+          </tr>
+          <tr>
+            <td style="color: #475569; padding: 6px 0;">Status</td>
+            <td style="color: #10b981; font-weight: 600; text-align: right; padding: 6px 0;">ACTIVE</td>
+          </tr>
+        </table>
+      </div>
+      <p>Your returns will now scale based on the guidelines of your upgraded plan.</p>
+      <a href="${APP_URL}/dashboard" class="btn">View Portfolio Dashboard</a>
+    `;
+
+    await emailService.sendEmail({
+      to: user.email,
+      subject: `[Plan Upgraded] Transition to ${newPlanName} Successful`,
       bodyHtml,
     });
   }
 }
-
 export const notificationService = new NotificationService();
 export default notificationService;

@@ -142,18 +142,17 @@ export default function AdminDashboardPage() {
     idDocumentUrl: string | null;
     ssn: string | null;
   }
-
   interface UserData {
     id: string;
     email: string;
     username: string;
     createdAt: string;
+    verificationStatus: "PENDING" | "APPROVED" | "REJECTED";
     role?: {
       name: string;
     } | null;
     profile?: UserProfile | null;
   }
-
   // User Management State
   const [users, setUsers] = useState<UserData[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -954,12 +953,18 @@ export default function AdminDashboardPage() {
                               </span>
                             </td>
                             <td className="py-4">{new Date(u.createdAt).toLocaleDateString()}</td>
-                            <td className="py-4">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400">
-                                ACTIVE
-                              </span>
-                            </td>
-                             <td className="py-4 text-right">
+                             <td className="py-4">
+                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                 u.verificationStatus === "APPROVED"
+                                   ? "bg-emerald-500/10 text-emerald-400"
+                                   : u.verificationStatus === "PENDING"
+                                     ? "bg-yellow-500/10 text-yellow-400"
+                                     : "bg-red-500/10 text-red-400"
+                               }`}>
+                                 {u.verificationStatus || "PENDING"}
+                               </span>
+                             </td>
+                              <td className="py-4 text-right">
                                <div className="flex justify-end gap-3 items-center">
                                  <button
                                    onClick={() => setSelectedUserForDetails(u)}
@@ -1162,14 +1167,67 @@ export default function AdminDashboardPage() {
                        </div>
                      </div>
  
-                     <div className="border-t border-slate-800 pt-4 flex justify-end">
-                       <button
-                         onClick={() => setSelectedUserForDetails(null)}
-                         className="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-xs font-semibold px-5 py-2.5 rounded-xl transition-colors text-slate-400"
-                       >
-                         Close Details
-                       </button>
-                     </div>
+                     <div className="border-t border-slate-800 pt-4 flex justify-between items-center gap-3">
+                        <div className="flex gap-2">
+                          {selectedUserForDetails.verificationStatus !== "APPROVED" && (
+                            <button
+                              onClick={async () => {
+                                if (confirm(`Are you sure you want to approve ${selectedUserForDetails.profile?.fullName || selectedUserForDetails.username}?`)) {
+                                  try {
+                                    const res = await fetch(`/api/users/${selectedUserForDetails.id}/approve`, { method: "POST" });
+                                    const json = await res.json();
+                                    if (json.success) {
+                                      setSelectedUserForDetails(null);
+                                      fetchUsers();
+                                    } else {
+                                      alert(json.error?.message || "Failed to approve user");
+                                    }
+                                  } catch (err) {
+                                    console.error(err);
+                                  }
+                                }
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors text-white cursor-pointer"
+                            >
+                              Approve ID
+                            </button>
+                          )}
+                          {selectedUserForDetails.verificationStatus !== "REJECTED" && (
+                            <button
+                              onClick={async () => {
+                                const reason = prompt("Enter reason for rejection (optional):");
+                                if (reason !== null) {
+                                  try {
+                                    const res = await fetch(`/api/users/${selectedUserForDetails.id}/reject`, {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ reason })
+                                    });
+                                    const json = await res.json();
+                                    if (json.success) {
+                                      setSelectedUserForDetails(null);
+                                      fetchUsers();
+                                    } else {
+                                      alert(json.error?.message || "Failed to reject user");
+                                    }
+                                  } catch (err) {
+                                    console.error(err);
+                                  }
+                                }
+                              }}
+                              className="bg-red-650 hover:bg-red-650 text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors text-white cursor-pointer"
+                            >
+                              Reject ID
+                            </button>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setSelectedUserForDetails(null)}
+                          className="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-xs font-semibold px-5 py-2.5 rounded-xl transition-colors text-slate-400 cursor-pointer"
+                        >
+                          Close Details
+                        </button>
+                      </div>
                    </div>
                  </div>
                )}

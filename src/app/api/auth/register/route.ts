@@ -74,6 +74,7 @@ export async function POST(request: Request) {
           username: normalizedUsername,
           passwordHash,
           roleId: dbRole.id,
+          verificationStatus: roleName === "ADMIN" ? "APPROVED" : "PENDING",
         },
         include: {
           role: true

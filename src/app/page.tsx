@@ -112,6 +112,42 @@ export default function LandingPage() {
   const [contactSuccess, setContactSuccess] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Contact form state
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [contactError, setContactError] = useState("");
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setContactSubmitting(true);
+    setContactError("");
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: contactName,
+          email: contactEmail,
+          message: contactMessage,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit contact message.");
+      }
+      setContactSuccess(true);
+      setContactName("");
+      setContactEmail("");
+      setContactMessage("");
+    } catch (err) {
+      setContactError(err instanceof Error ? err.message : "An unexpected error occurred.");
+    } finally {
+      setContactSubmitting(false);
+    }
+  };
+
   useEffect(() => {
     async function checkSession() {
       try {
@@ -517,26 +553,53 @@ export default function LandingPage() {
           </div>
         ) : (
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setContactSuccess(true);
-            }}
+            onSubmit={handleContactSubmit}
             className="space-y-5 bg-slate-900/60 backdrop-blur-xl border border-slate-900 rounded-3xl p-8 shadow-xl"
           >
+            {contactError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
+                {contactError}
+              </div>
+            )}
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Name</label>
-              <input type="text" required className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors" placeholder="John Doe" />
+              <input 
+                type="text" 
+                required 
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors" 
+                placeholder="John Doe" 
+              />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Email Address</label>
-              <input type="email" required className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors" placeholder="john@example.com" />
+              <input 
+                type="email" 
+                required 
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors" 
+                placeholder="john@example.com" 
+              />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Message</label>
-              <textarea required rows={4} className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors resize-none" placeholder="Hello, I'd like to ask about..." />
+              <textarea 
+                required 
+                rows={4} 
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors resize-none" 
+                placeholder="Hello, I'd like to ask about..." 
+              />
             </div>
-            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2">
-              Send Message <Mail className="w-4 h-4" />
+            <button 
+              type="submit" 
+              disabled={contactSubmitting}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {contactSubmitting ? "Sending..." : "Send Message"} <Mail className="w-4 h-4" />
             </button>
           </form>
         )}

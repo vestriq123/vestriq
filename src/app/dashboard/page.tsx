@@ -250,7 +250,7 @@ export default function UserDashboardPage() {
   const liveInvestments = investments.map(inv => {
     if (inv.status !== "ACTIVE") return inv;
     const msPerDay = 24 * 60 * 60 * 1000;
-    const daysElapsed = (timeTick - new Date(inv.createdAt).getTime()) / msPerDay;
+    const daysElapsed = Math.floor((timeTick - new Date(inv.createdAt).getTime()) / msPerDay);
     return {
       ...inv,
       balance: inv.amount * Math.pow(1.05, daysElapsed)
@@ -263,7 +263,7 @@ export default function UserDashboardPage() {
 
   const msPerDay = 24 * 60 * 60 * 1000;
   const daysSinceUpdate = profile?.updatedAt
-    ? (timeTick - new Date(profile.updatedAt).getTime()) / msPerDay
+    ? Math.floor((timeTick - new Date(profile.updatedAt).getTime()) / msPerDay)
     : 0;
 
   const portfolioValue = profile?.customPortfolioValue !== null && profile?.customPortfolioValue !== undefined

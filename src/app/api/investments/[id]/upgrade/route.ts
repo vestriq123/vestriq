@@ -95,5 +95,3 @@ export const POST = apiHandler(async (request: Request, context: unknown) => {
 
   return successResponse(updatedInvestment, `Successfully upgraded to ${newPlan.name} plan`);
 });
-
-export default POST;

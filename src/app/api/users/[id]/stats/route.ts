@@ -46,4 +46,3 @@ export const PUT = apiHandler(async (request: Request, context: unknown) => {
 
   return successResponse(updatedProfile, "User custom stats updated successfully");
 });
-export default PUT;

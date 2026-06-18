@@ -39,5 +39,3 @@ export const POST = apiHandler(async (request: Request, context: unknown) => {
 
   return successResponse(updatedUser, "User approved successfully");
 });
-
-export default POST;

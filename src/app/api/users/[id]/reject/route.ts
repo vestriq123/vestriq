@@ -56,5 +56,3 @@ export const POST = apiHandler(async (request: Request, context: unknown) => {
 
   return successResponse(updatedUser, "User verification rejected successfully");
 });
-
-export default POST;

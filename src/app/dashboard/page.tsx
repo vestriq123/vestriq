@@ -94,6 +94,7 @@ export default function UserDashboardPage() {
     customTotalProfit: number | null;
     customWithdrawal: number | null;
     customAvailableCash: number | null;
+    updatedAt: string;
   }
 
   // Live Data States
@@ -260,8 +261,13 @@ export default function UserDashboardPage() {
   const calculatedTotalInvested = liveInvestments.reduce((acc, inv) => acc + inv.amount, 0);
   const calculatedWithdrawalTotal = withdrawals.reduce((total, w) => total + w.amount, 0);
 
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysSinceUpdate = profile?.updatedAt
+    ? (timeTick - new Date(profile.updatedAt).getTime()) / msPerDay
+    : 0;
+
   const portfolioValue = profile?.customPortfolioValue !== null && profile?.customPortfolioValue !== undefined
-    ? profile.customPortfolioValue
+    ? profile.customPortfolioValue * Math.pow(1.05, daysSinceUpdate)
     : calculatedPortfolioValue;
 
   const totalInvested = profile?.customTotalInvestment !== null && profile?.customTotalInvestment !== undefined
@@ -269,7 +275,7 @@ export default function UserDashboardPage() {
     : calculatedTotalInvested;
 
   const totalProfit = profile?.customTotalProfit !== null && profile?.customTotalProfit !== undefined
-    ? profile.customTotalProfit
+    ? profile.customTotalProfit * Math.pow(1.05, daysSinceUpdate)
     : (portfolioValue - totalInvested);
 
   const approvedWithdrawalTotal = profile?.customWithdrawal !== null && profile?.customWithdrawal !== undefined

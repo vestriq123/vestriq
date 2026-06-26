@@ -80,12 +80,23 @@ export const POST = apiHandler(async (request: Request, context: unknown) => {
     });
 
     if (profile) {
-      const updatedData: { customTotalInvestment?: number; customPortfolioValue?: number } = {};
+      // Custom fields compound at 5%/day relative to profile.updatedAt, which
+      // Prisma will reset to "now" on this update. Roll the compounding fields
+      // forward to their present value first, so resetting the clock doesn't
+      // erase profit accrued since the last update.
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const daysSinceUpdate = Math.floor((Date.now() - profile.updatedAt.getTime()) / msPerDay);
+
+      const updatedData: { customTotalInvestment?: number; customPortfolioValue?: number; customTotalProfit?: number } = {};
       if (profile.customTotalInvestment !== null) {
         updatedData.customTotalInvestment = profile.customTotalInvestment + amount;
       }
+      if (profile.customTotalProfit !== null) {
+        updatedData.customTotalProfit = profile.customTotalProfit * Math.pow(1.05, daysSinceUpdate);
+      }
       if (profile.customPortfolioValue !== null) {
-        updatedData.customPortfolioValue = profile.customPortfolioValue + amount;
+        const compoundedPortfolioValue = profile.customPortfolioValue * Math.pow(1.05, daysSinceUpdate);
+        updatedData.customPortfolioValue = compoundedPortfolioValue + amount;
       }
 
       if (Object.keys(updatedData).length > 0) {

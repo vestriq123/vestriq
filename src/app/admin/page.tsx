@@ -166,6 +166,46 @@ export default function AdminDashboardPage() {
   const [savingOverrides, setSavingOverrides] = useState(false);
   const [overrideError, setOverrideError] = useState("");
 
+  // Manual Investment state
+  const [creditUserId, setCreditUserId] = useState("");
+  const [creditPlanId, setCreditPlanId] = useState("");
+  const [creditAmount, setCreditAmount] = useState("");
+  const [submittingCredit, setSubmittingCredit] = useState(false);
+  const [creditMessage, setCreditMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  const handleManualCreditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!creditUserId || !creditPlanId || !creditAmount) return;
+    setSubmittingCredit(true);
+    setCreditMessage(null);
+    try {
+      const res = await fetch(`/api/users/${creditUserId}/manual-invest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: Number(creditAmount),
+          planId: creditPlanId,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCreditMessage({ text: `Successfully credited $${Number(creditAmount).toLocaleString()} to the user's account!`, type: "success" });
+        setCreditAmount("");
+        // Refresh all relevant tables
+        fetchUsers();
+        fetchInvestments();
+        fetchDeposits();
+      } else {
+        setCreditMessage({ text: data.error?.message || "Failed to process manual credit", type: "error" });
+      }
+    } catch (err) {
+      console.error(err);
+      setCreditMessage({ text: "Network error occurred", type: "error" });
+    } finally {
+      setSubmittingCredit(false);
+    }
+  };
+
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
@@ -888,9 +928,85 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
-          {/* TAB 2: USER MANAGEMENT */}
           {activeTab === "users" && (
             <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm space-y-6">
+              {/* Quick Manual Investment Credit Section */}
+              <div className="bg-slate-900/45 border border-slate-900/80 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-slate-900/60">
+                  <Plus className="w-4 h-4 text-indigo-400" />
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-200">Quick Manual Investment Credit</h3>
+                    <p className="text-[10px] text-slate-500">Credit any investor account with a manual allocation</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleManualCreditSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <label className="block text-[9px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Select Investor</label>
+                    <select
+                      value={creditUserId}
+                      onChange={(e) => setCreditUserId(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white"
+                      required
+                    >
+                      <option value="">-- Choose User --</option>
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.profile?.fullName || u.username} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[9px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Investment Plan</label>
+                    <select
+                      value={creditPlanId}
+                      onChange={(e) => setCreditPlanId(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white"
+                      required
+                    >
+                      <option value="">-- Choose Plan --</option>
+                      {plans.filter(p => p.enabled).map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} (Min: ${p.minAmount.toLocaleString()})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[9px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Amount to Add ($)</label>
+                    <input
+                      type="number"
+                      placeholder="Enter amount"
+                      value={creditAmount}
+                      onChange={(e) => setCreditAmount(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white"
+                      required
+                      min="0.01"
+                      step="0.01"
+                    />
+                  </div>
+
+                  <div>
+                    <button
+                      type="submit"
+                      disabled={submittingCredit}
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-semibold py-2 rounded-xl transition-colors text-white cursor-pointer h-[34px] flex items-center justify-center gap-1.5"
+                    >
+                      {submittingCredit ? "Processing..." : "Credit Account"}
+                    </button>
+                  </div>
+                </form>
+
+                {creditMessage && (
+                  <p className={`text-[10px] font-semibold ${creditMessage.type === "success" ? "text-emerald-400" : "text-red-400"}`}>
+                    {creditMessage.text}
+                  </p>
+                )}
+              </div>
+
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pb-6 border-b border-slate-900/60">
                 <div className="relative w-full sm:max-w-xs">
                   <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />

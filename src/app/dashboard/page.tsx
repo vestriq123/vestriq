@@ -30,6 +30,7 @@ import {
   BarChart,
   Bar
 } from "recharts";
+import { DEFAULT_DAILY_GROWTH_RATE } from "@/lib/constants";
 
 export default function UserDashboardPage() {
   const router = useRouter();
@@ -52,7 +53,7 @@ export default function UserDashboardPage() {
     status: string;
     createdAt: string;
     companyName?: string | null;
-    plan?: { id: string; name: string } | null;
+    plan?: { id: string; name: string; dailyGrowthRate?: number } | null;
     planId?: string;
     performanceRecords?: {
       id: string;
@@ -251,9 +252,10 @@ export default function UserDashboardPage() {
     if (inv.status !== "ACTIVE") return inv;
     const msPerDay = 24 * 60 * 60 * 1000;
     const daysElapsed = Math.floor((timeTick - new Date(inv.createdAt).getTime()) / msPerDay);
+    const rate = inv.plan?.dailyGrowthRate ?? DEFAULT_DAILY_GROWTH_RATE;
     return {
       ...inv,
-      balance: inv.amount * Math.pow(1.05, daysElapsed)
+      balance: inv.amount * Math.pow(1 + rate, daysElapsed)
     };
   });
 
@@ -267,7 +269,7 @@ export default function UserDashboardPage() {
     : 0;
 
   const portfolioValue = profile?.customPortfolioValue !== null && profile?.customPortfolioValue !== undefined
-    ? profile.customPortfolioValue * Math.pow(1.05, daysSinceUpdate)
+    ? profile.customPortfolioValue * Math.pow(1 + DEFAULT_DAILY_GROWTH_RATE, daysSinceUpdate)
     : calculatedPortfolioValue;
 
   const totalInvested = profile?.customTotalInvestment !== null && profile?.customTotalInvestment !== undefined
@@ -275,7 +277,7 @@ export default function UserDashboardPage() {
     : calculatedTotalInvested;
 
   const totalProfit = profile?.customTotalProfit !== null && profile?.customTotalProfit !== undefined
-    ? profile.customTotalProfit * Math.pow(1.05, daysSinceUpdate)
+    ? profile.customTotalProfit * Math.pow(1 + DEFAULT_DAILY_GROWTH_RATE, daysSinceUpdate)
     : (portfolioValue - totalInvested);
 
   const approvedWithdrawalTotal = profile?.customWithdrawal !== null && profile?.customWithdrawal !== undefined

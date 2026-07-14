@@ -9,6 +9,7 @@ const createPlanSchema = z.object({
   description: z.string().min(5, "Description must be at least 5 characters"),
   minAmount: z.number().positive("Minimum amount must be positive"),
   maxAmount: z.number().positive("Maximum amount must be positive"),
+  dailyGrowthRate: z.number().min(0, "Daily growth rate cannot be negative").max(1, "Daily growth rate cannot exceed 100%").optional().default(0.05),
 }).refine(data => data.maxAmount >= data.minAmount, {
   message: "Maximum amount must be greater than or equal to minimum amount",
   path: ["maxAmount"],

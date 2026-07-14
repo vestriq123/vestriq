@@ -9,6 +9,7 @@ const updatePlanSchema = z.object({
   description: z.string().min(5, "Description must be at least 5 characters").optional(),
   minAmount: z.number().positive("Minimum amount must be positive").optional(),
   maxAmount: z.number().positive("Maximum amount must be positive").optional(),
+  dailyGrowthRate: z.number().min(0, "Daily growth rate cannot be negative").max(1, "Daily growth rate cannot exceed 100%").optional(),
   enabled: z.boolean().optional(),
 }).refine(data => {
   if (data.minAmount !== undefined && data.maxAmount !== undefined) {

@@ -287,16 +287,20 @@ export default function AdminDashboardPage() {
     description: string;
     minAmount: number;
     maxAmount: number;
+    dailyGrowthRate: number;
     enabled: boolean;
   }
   const [plans, setPlans] = useState<PlanData[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
+  // dailyGrowthRate is edited in the form as a percentage (e.g. 5 = 5%/day)
+  // and converted to/from the decimal value (0.05) the API stores.
   const [planForm, setPlanForm] = useState({
     id: "",
     name: "",
     description: "",
     minAmount: 0,
     maxAmount: 0,
+    dailyGrowthRate: 5,
     enabled: true
   });
   const [isEditingPlan, setIsEditingPlan] = useState(false);
@@ -662,14 +666,15 @@ export default function AdminDashboardPage() {
           description: planForm.description,
           minAmount: Number(planForm.minAmount),
           maxAmount: Number(planForm.maxAmount),
+          dailyGrowthRate: Number(planForm.dailyGrowthRate) / 100,
           enabled: planForm.enabled
         })
       });
-      
+
       const result = await res.json();
       if (result.success) {
         setShowPlanForm(false);
-        setPlanForm({ id: "", name: "", description: "", minAmount: 0, maxAmount: 0, enabled: true });
+        setPlanForm({ id: "", name: "", description: "", minAmount: 0, maxAmount: 0, dailyGrowthRate: 5, enabled: true });
         setIsEditingPlan(false);
         fetchPlans();
       } else {
@@ -1874,7 +1879,7 @@ export default function AdminDashboardPage() {
                   {!showPlanForm && (
                     <button
                       onClick={() => {
-                        setPlanForm({ id: "", name: "", description: "", minAmount: 0, maxAmount: 0, enabled: true });
+                        setPlanForm({ id: "", name: "", description: "", minAmount: 0, maxAmount: 0, dailyGrowthRate: 5, enabled: true });
                         setIsEditingPlan(false);
                         setPlanError("");
                         setShowPlanForm(true);
@@ -1945,6 +1950,21 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
 
+                    <div className="space-y-1">
+                      <label className="block text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Daily Compounding Rate (%)</label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={planForm.dailyGrowthRate}
+                        onChange={(e) => setPlanForm({ ...planForm, dailyGrowthRate: Number(e.target.value) })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                      />
+                      <p className="text-[10px] text-slate-600 pt-0.5">Simulated daily growth applied to active investments on this plan (e.g. 5 = 5%/day).</p>
+                    </div>
+
                     <div className="flex items-center gap-2 pt-2">
                       <input
                         type="checkbox"
@@ -2000,13 +2020,17 @@ export default function AdminDashboardPage() {
                               <span className="text-slate-500">Max Investment:</span>
                               <span className="font-bold text-slate-300">${plan.maxAmount.toLocaleString()}</span>
                             </div>
+                            <div className="flex justify-between text-[11px]">
+                              <span className="text-slate-500">Daily Rate:</span>
+                              <span className="font-bold text-emerald-400">{(plan.dailyGrowthRate * 100).toFixed(2)}%/day</span>
+                            </div>
                           </div>
                         </div>
 
                         <div className="flex gap-2 pt-4 border-t border-slate-900/60">
                           <button
                             onClick={() => {
-                              setPlanForm(plan);
+                              setPlanForm({ ...plan, dailyGrowthRate: plan.dailyGrowthRate * 100 });
                               setIsEditingPlan(true);
                               setPlanError("");
                               setShowPlanForm(true);

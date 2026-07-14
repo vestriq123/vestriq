@@ -1,11 +1,13 @@
 import { BaseRepository } from "./baseRepository";
 import { InvestmentStatus } from "@prisma/client";
+import { DEFAULT_DAILY_GROWTH_RATE } from "@/lib/constants";
 
-function applyDynamicGrowth<T extends { status: string; createdAt: Date; amount: number; balance: number }>(inv: T): T {
+function applyDynamicGrowth<T extends { status: string; createdAt: Date; amount: number; balance: number; plan?: { dailyGrowthRate?: number } | null }>(inv: T): T {
   if (inv.status === "ACTIVE") {
     const msPerDay = 24 * 60 * 60 * 1000;
     const daysElapsed = (Date.now() - new Date(inv.createdAt).getTime()) / msPerDay;
-    inv.balance = inv.amount * Math.pow(1.05, daysElapsed);
+    const rate = inv.plan?.dailyGrowthRate ?? DEFAULT_DAILY_GROWTH_RATE;
+    inv.balance = inv.amount * Math.pow(1 + rate, daysElapsed);
   }
   return inv;
 }

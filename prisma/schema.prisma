@@ -123,15 +123,16 @@ model Permission {
 }
 
 model InvestmentPlan {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  description String
-  minAmount   Float
-  maxAmount   Float
-  enabled     Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id              String    @id @default(uuid())
+  name            String    @unique
+  description     String
+  minAmount       Float
+  maxAmount       Float
+  dailyGrowthRate Float     @default(0.05) // e.g. 0.05 = 5% simulated daily compounding
+  enabled         Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
 
   investments Investment[]
   deposits    Deposit[]

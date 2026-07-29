@@ -129,6 +129,7 @@ model InvestmentPlan {
   minAmount       Float
   maxAmount       Float
   dailyGrowthRate Float     @default(0.05) // e.g. 0.05 = 5% simulated daily compounding
+  durationMonths  Int       @default(3)
   enabled         Boolean   @default(true)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

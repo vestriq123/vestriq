@@ -10,6 +10,7 @@ const updatePlanSchema = z.object({
   minAmount: z.number().positive("Minimum amount must be positive").optional(),
   maxAmount: z.number().positive("Maximum amount must be positive").optional(),
   dailyGrowthRate: z.number().min(0, "Daily growth rate cannot be negative").max(1, "Daily growth rate cannot exceed 100%").optional(),
+  durationMonths: z.number().int().min(1, "Duration must be at least 1 month").max(60, "Duration cannot exceed 60 months").optional(),
   enabled: z.boolean().optional(),
 }).refine(data => {
   if (data.minAmount !== undefined && data.maxAmount !== undefined) {

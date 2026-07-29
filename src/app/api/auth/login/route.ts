@@ -23,9 +23,10 @@ export async function POST(request: Request) {
     const { identifier, password } = result.data;
     const normalizedIdentifier = identifier.toLowerCase();
 
-    // Find user by email or username
+    // Find user by email or username, excluding deleted accounts
     const user = await db.user.findFirst({
       where: {
+        deletedAt: null,
         OR: [
           { email: normalizedIdentifier },
           { username: normalizedIdentifier }

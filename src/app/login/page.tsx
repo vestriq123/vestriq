@@ -1,11 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Eye, EyeOff, TrendingUp } from "lucide-react";
+import { Card, CardBody } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 
 const loginSchema = z.object({
   identifier: z.string().min(1, "Username or email is required"),
@@ -14,7 +18,8 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -23,9 +28,7 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-  });
+  } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
 
   const onSubmit = async (data: LoginFormValues) => {
     setLoading(true);
@@ -37,63 +40,41 @@ export default function LoginPage() {
         body: JSON.stringify(data),
       });
       const result = await response.json();
-      
       if (!response.ok) {
         throw new Error(result.error?.message || result.error || "Login failed");
       }
-
-      window.location.href = "/dashboard";
+      const redirectTo = searchParams.get("redirectTo");
+      window.location.href = redirectTo && redirectTo.startsWith("/") ? redirectTo : "/dashboard";
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Something went wrong. Please check your credentials.";
-      setError(msg);
+      setError(err instanceof Error ? err.message : "Something went wrong. Please check your credentials.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-4 relative overflow-hidden">
-      {/* Decorative Orbs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
-
-      <div className="w-full max-w-md bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 md:p-10 shadow-2xl relative z-10">
+    <Card className="w-full max-w-md p-2 relative z-10 shadow-elevated">
+      <CardBody className="p-8 md:p-10">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent">
-            Vestriq
+          <Link href="/" className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
+            <TrendingUp className="text-brand-400 w-6 h-6" />
+            <span className="bg-gradient-to-r from-brand-400 via-brand-300 to-accent bg-clip-text text-transparent">Vestriq</span>
           </Link>
-          <h1 className="text-2xl font-semibold mt-4">Welcome back</h1>
-          <p className="text-sm text-slate-400 mt-1">Intelligent wealth management at your fingertips</p>
+          <h1 className="text-2xl font-semibold mt-4 text-text-primary">Welcome back</h1>
+          <p className="text-sm text-text-muted mt-1">Intelligent wealth management at your fingertips</p>
         </div>
 
-        {error && (
-          <div className="bg-red-500/15 border border-red-500/30 text-red-200 text-sm rounded-xl p-4 mb-6">
-            {error}
-          </div>
-        )}
+        {error && <div className="bg-danger/10 border border-danger/20 text-danger text-sm rounded-xl p-4 mb-6">{error}</div>}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Username or Email
-            </label>
-            <input
-              type="text"
-              {...register("identifier")}
-              className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-              placeholder="investor@vestriq.com"
-            />
-            {errors.identifier && (
-              <p className="text-xs text-red-400 mt-1">{errors.identifier.message}</p>
-            )}
-          </div>
+          <Input label="Username or Email" required {...register("identifier")} error={errors.identifier?.message} placeholder="investor@vestriq.com" />
 
           <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                Password
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="block text-[11px] text-text-muted uppercase tracking-wider font-semibold">
+                Password <span className="text-danger">*</span>
               </label>
-              <Link href="/forgot-password" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+              <Link href="/forgot-password" className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
                 Forgot password?
               </Link>
             </div>
@@ -101,42 +82,45 @@ export default function LoginPage() {
               <input
                 type={showPassword ? "text" : "password"}
                 {...register("password")}
-                className="w-full bg-slate-950/50 border border-slate-800 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-4 pr-10 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-colors"
                 placeholder="••••••••"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-            {errors.password && (
-              <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>
-            )}
+            {errors.password && <p className="text-xs text-danger mt-1.5">{errors.password.message}</p>}
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {loading ? (
-              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              "Sign In"
-            )}
-          </button>
+          <Button type="submit" isLoading={loading} fullWidth size="lg">
+            Sign In
+          </Button>
         </form>
 
-        <div className="text-center mt-8 text-sm text-slate-400">
+        <div className="text-center mt-8 text-sm text-text-muted">
           New to Vestriq?{" "}
-          <Link href="/register" className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">
+          <Link href="/register" className="text-brand-400 hover:text-brand-300 transition-colors font-medium">
             Create an account
           </Link>
         </div>
-      </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <main className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
     </main>
   );
 }

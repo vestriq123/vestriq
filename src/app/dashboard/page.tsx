@@ -1,43 +1,25 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import {
-  TrendingUp,
-  DollarSign,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Briefcase,
-  Wallet,
-  LogOut,
-  Bell,
-  Clock,
-  TrendingDown,
-  User,
-  ShieldCheck,
-  Menu,
-  X
-} from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar
-} from "recharts";
+import { TrendingUp, DollarSign, ArrowUpRight, Bell, Clock } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, ResponsiveContainer } from "recharts";
 import { DEFAULT_DAILY_GROWTH_RATE } from "@/lib/constants";
+import { DashboardShell } from "@/components/common/DashboardShell";
+import { chartTheme, ChartTooltip } from "@/components/common/ChartCard";
+import { TransactionRow, type TransactionInfo } from "@/components/common/TransactionRow";
+import { StatTile } from "@/components/ui/StatTile";
+import { Card, CardHeader, CardBody } from "@/components/ui/Card";
+import { Tabs } from "@/components/ui/Tabs";
+import { Badge, statusToVariant } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonCard, Skeleton } from "@/components/ui/Skeleton";
+import { TableContainer, Table, Thead, Th, Tbody, Tr, Td } from "@/components/ui/Table";
 
 export default function UserDashboardPage() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"analytics" | "investments" | "transactions" | "logs">("analytics");
-  const [loadingLogout, setLoadingLogout] = useState(false);
+  const [activeTab, setActiveTab] = useState<"analytics" | "investments" | "transactions">("analytics");
 
-  // Live Data Interfaces
   interface DepositInfo {
     id: string;
     amount: number;
@@ -62,15 +44,6 @@ export default function UserDashboardPage() {
       note?: string | null;
       createdAt: string;
     }[];
-  }
-
-
-  interface TransactionInfo {
-    id: string;
-    type: string;
-    amount: number;
-    description: string;
-    createdAt: string;
   }
 
   interface NotificationInfo {
@@ -98,7 +71,6 @@ export default function UserDashboardPage() {
     updatedAt: string;
   }
 
-  // Live Data States
   const [deposits, setDeposits] = useState<DepositInfo[]>([]);
   const [investments, setInvestments] = useState<InvestmentInfo[]>([]);
   const [transactions, setTransactions] = useState<TransactionInfo[]>([]);
@@ -106,9 +78,6 @@ export default function UserDashboardPage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalInfo[]>([]);
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
   const [loadingData, setLoadingData] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
   const [timeTick, setTimeTick] = useState(Date.now());
 
   interface PlanData {
@@ -117,6 +86,7 @@ export default function UserDashboardPage() {
     description: string;
     minAmount: number;
     maxAmount: number;
+    dailyGrowthRate?: number;
   }
   const [availablePlans, setAvailablePlans] = useState<PlanData[]>([]);
   const [upgradingInvestment, setUpgradingInvestment] = useState<InvestmentInfo | null>(null);
@@ -128,9 +98,7 @@ export default function UserDashboardPage() {
     try {
       const res = await fetch("/api/investment-plans");
       const json = await res.json();
-      if (json.success) {
-        setAvailablePlans(json.data);
-      }
+      if (json.success) setAvailablePlans(json.data);
     } catch (err) {
       console.error(err);
     }
@@ -160,6 +128,7 @@ export default function UserDashboardPage() {
         setUpgradeError(json.error?.message || "Failed to upgrade investment plan");
       }
     } catch (err) {
+      console.error(err);
       setUpgradeError("Network error occurred during upgrade");
     } finally {
       setUpgradingLoading(false);
@@ -167,22 +136,19 @@ export default function UserDashboardPage() {
   };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeTick(Date.now());
-    }, 1000);
+    const interval = setInterval(() => setTimeTick(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchAllData = async () => {
     try {
-      const [depRes, invRes, txRes, notifRes, withdrawalRes, profileRes, sessionRes] = await Promise.all([
+      const [depRes, invRes, txRes, notifRes, withdrawalRes, profileRes] = await Promise.all([
         fetch("/api/deposits"),
         fetch("/api/investments"),
         fetch("/api/transactions"),
         fetch("/api/notifications"),
         fetch("/api/withdrawals"),
         fetch("/api/profile"),
-        fetch("/api/auth/session")
       ]);
 
       const depJson = await depRes.json();
@@ -191,7 +157,6 @@ export default function UserDashboardPage() {
       const notifJson = await notifRes.json();
       const withdrawalJson = await withdrawalRes.json();
       const profileJson = await profileRes.json();
-      const sessionJson = await sessionRes.json();
 
       if (depJson.success) setDeposits(depJson.data);
       if (invJson.success) setInvestments(invJson.data);
@@ -199,9 +164,6 @@ export default function UserDashboardPage() {
       if (notifJson.success) setNotifications(notifJson.data);
       if (withdrawalJson.success) setWithdrawals(withdrawalJson.data);
       if (profileJson.success) setProfile(profileJson.data);
-      if (sessionJson.authenticated && sessionJson.user?.role === "ADMIN") {
-        setIsAdmin(true);
-      }
     } catch (err) {
       console.error("Failed to fetch dashboard data", err);
     } finally {
@@ -214,49 +176,25 @@ export default function UserDashboardPage() {
     fetchAvailablePlans();
   }, []);
 
-
-  const handleLogout = async () => {
-    setLoadingLogout(true);
-    try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-      if (response.ok) {
-        window.location.href = "/login";
-      }
-    } catch (err) {
-      console.error("Logout failed", err);
-    } finally {
-      setLoadingLogout(false);
-    }
-  };
-
   const handleMarkAsRead = async (id: string) => {
     try {
-      const res = await fetch(`/api/notifications/${id}/read`, {
-        method: "POST",
-      });
+      const res = await fetch(`/api/notifications/${id}/read`, { method: "POST" });
       if (res.ok) {
         const notifRes = await fetch("/api/notifications");
         const notifJson = await notifRes.json();
-        if (notifJson.success) {
-          setNotifications(notifJson.data);
-        }
+        if (notifJson.success) setNotifications(notifJson.data);
       }
     } catch (err) {
       console.error("Failed to mark notification as read", err);
     }
   };
 
-  const liveInvestments = investments.map(inv => {
+  const liveInvestments = investments.map((inv) => {
     if (inv.status !== "ACTIVE") return inv;
     const msPerDay = 24 * 60 * 60 * 1000;
     const daysElapsed = Math.floor((timeTick - new Date(inv.createdAt).getTime()) / msPerDay);
     const rate = inv.plan?.dailyGrowthRate ?? DEFAULT_DAILY_GROWTH_RATE;
-    return {
-      ...inv,
-      balance: inv.amount * Math.pow(1 + rate, daysElapsed)
-    };
+    return { ...inv, balance: inv.amount * Math.pow(1 + rate, daysElapsed) };
   });
 
   const calculatedPortfolioValue = liveInvestments.reduce((acc, inv) => acc + inv.balance, 0);
@@ -264,31 +202,25 @@ export default function UserDashboardPage() {
   const calculatedWithdrawalTotal = withdrawals.reduce((total, w) => total + w.amount, 0);
 
   const msPerDay = 24 * 60 * 60 * 1000;
-  const daysSinceUpdate = profile?.updatedAt
-    ? Math.floor((timeTick - new Date(profile.updatedAt).getTime()) / msPerDay)
-    : 0;
+  const daysSinceUpdate = profile?.updatedAt ? Math.floor((timeTick - new Date(profile.updatedAt).getTime()) / msPerDay) : 0;
 
-  const portfolioValue = profile?.customPortfolioValue !== null && profile?.customPortfolioValue !== undefined
-    ? profile.customPortfolioValue * Math.pow(1 + DEFAULT_DAILY_GROWTH_RATE, daysSinceUpdate)
-    : calculatedPortfolioValue;
+  const portfolioValue =
+    profile?.customPortfolioValue !== null && profile?.customPortfolioValue !== undefined
+      ? profile.customPortfolioValue * Math.pow(1 + DEFAULT_DAILY_GROWTH_RATE, daysSinceUpdate)
+      : calculatedPortfolioValue;
 
-  const totalInvested = profile?.customTotalInvestment !== null && profile?.customTotalInvestment !== undefined
-    ? profile.customTotalInvestment
-    : calculatedTotalInvested;
+  const totalInvested =
+    profile?.customTotalInvestment !== null && profile?.customTotalInvestment !== undefined ? profile.customTotalInvestment : calculatedTotalInvested;
 
-  const totalProfit = profile?.customTotalProfit !== null && profile?.customTotalProfit !== undefined
-    ? profile.customTotalProfit * Math.pow(1 + DEFAULT_DAILY_GROWTH_RATE, daysSinceUpdate)
-    : (portfolioValue - totalInvested);
+  const totalProfit =
+    profile?.customTotalProfit !== null && profile?.customTotalProfit !== undefined
+      ? profile.customTotalProfit * Math.pow(1 + DEFAULT_DAILY_GROWTH_RATE, daysSinceUpdate)
+      : portfolioValue - totalInvested;
 
-  const approvedWithdrawalTotal = profile?.customWithdrawal !== null && profile?.customWithdrawal !== undefined
-    ? profile.customWithdrawal
-    : calculatedWithdrawalTotal;
+  const approvedWithdrawalTotal =
+    profile?.customWithdrawal !== null && profile?.customWithdrawal !== undefined ? profile.customWithdrawal : calculatedWithdrawalTotal;
 
-  const availableCash = profile?.customAvailableCash !== null && profile?.customAvailableCash !== undefined
-    ? profile.customAvailableCash
-    : 0.00;
-
-  const activePlanCount = liveInvestments.filter(inv => inv.status === "ACTIVE").length;
+  const activePlanCount = liveInvestments.filter((inv) => inv.status === "ACTIVE").length;
   const performanceRecords = investments
     .flatMap((investment) => investment.performanceRecords || [])
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -310,289 +242,113 @@ export default function UserDashboardPage() {
   const profitHistory = Object.entries(profitHistoryMap).map(([name, profit]) => ({ name, profit }));
   const portfolioProfitHistory = profitHistory.length ? profitHistory : [{ name: "Current", profit: Math.max(totalProfit, 0) }];
 
+  const activeInvestments = liveInvestments.filter((inv) => inv.status === "ACTIVE");
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans flex">
-      {/* SIDEBAR */}
-      <aside className="hidden lg:flex flex-col justify-between w-64 bg-slate-900/40 border-r border-slate-900 p-6 shrink-0">
+    <DashboardShell active="overview" title="Portfolio Overview" subtitle="Real-time assets allocation logs">
+      {loadingData ? (
         <div className="space-y-8">
-          <Link href="/" className="flex items-center gap-2">
-            <TrendingUp className="text-indigo-400 w-6 h-6" />
-            <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
-              Vestriq
-            </span>
-          </Link>
-
-          <div className="space-y-1">
-            <button
-              id="nav-overview"
-              onClick={() => router.push("/dashboard")}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-indigo-600/10 text-indigo-300 rounded-xl text-sm font-semibold border border-indigo-500/20 text-left"
-            >
-              <Briefcase className="w-5 h-5" /> Portfolio Overview
-            </button>
-            <button
-              id="nav-plans"
-              onClick={() => router.push("/dashboard/plans")}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
-            >
-              <ShieldCheck className="w-5 h-5" /> Investment Plans
-            </button>
-            <button
-              id="nav-deposit"
-              onClick={() => router.push("/dashboard/deposit")}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
-            >
-              <Wallet className="w-5 h-5" /> Deposit Funds
-            </button>
-            <button
-              id="nav-withdraw"
-              type="button"
-              onClick={() => router.push("/dashboard/withdraw")}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
-            >
-              <ArrowDownLeft className="w-5 h-5" /> Request Payout
-            </button>
-            {isAdmin && (
-              <button
-                id="nav-admin"
-                type="button"
-                onClick={() => router.push("/admin")}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-650/10 text-indigo-400 hover:text-indigo-300 rounded-xl text-sm font-semibold border border-transparent transition-colors text-left"
-              >
-                <ShieldCheck className="w-5 h-5 text-indigo-400" /> Admin Control
-              </button>
-            )}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
-        </div>
-
-        <div>
-          <button
-            id="nav-logout"
-            onClick={handleLogout}
-            disabled={loadingLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-xl text-sm font-semibold transition-all"
-          >
-            <LogOut className="w-5 h-5" /> {loadingLogout ? "Logging out..." : "Log Out"}
-          </button>
-        </div>
-      </aside>
-
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto max-h-screen">
-        {/* HEADER */}
-        <header className="h-20 border-b border-slate-900 px-6 md:px-8 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsMobileNavOpen(true)}
-              className="p-2 hover:bg-slate-900 rounded-xl text-slate-400 hover:text-white transition-colors"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-lg font-bold text-slate-200">Portfolio Portal</h1>
-              <p className="text-xs text-slate-500 hidden sm:block">Real-time assets allocation logs</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 relative">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsNotifDropdownOpen(!isNotifDropdownOpen)}
-                className="relative cursor-pointer hover:bg-slate-900 p-2 rounded-xl transition-colors"
-              >
-                <Bell className="w-5 h-5 text-slate-400 hover:text-white" />
-                {notifications.some(n => !n.read) && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-slate-950" />
-                )}
-              </button>
-
-              {isNotifDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3">
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                    <h4 className="text-xs font-bold text-slate-300">Notifications</h4>
-                    <span className="text-[10px] text-indigo-400 font-semibold">{notifications.filter(n => !n.read).length} Unread</span>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto space-y-2">
-                    {notifications.length === 0 ? (
-                      <p className="text-[10px] text-slate-500 text-center py-4">No notifications yet</p>
-                    ) : (
-                      notifications.map((n) => (
-                        <div key={n.id} className={`p-2.5 rounded-xl border text-[10px] text-left ${!n.read ? "border-indigo-500/20 bg-indigo-500/5" : "border-slate-800 bg-slate-950/20"}`}>
-                          <div className="flex justify-between items-start mb-1 gap-2">
-                            <span className="font-bold text-slate-200">{n.title}</span>
-                            {!n.read && (
-                              <button
-                                type="button"
-                                onClick={() => handleMarkAsRead(n.id)}
-                                className="text-[9px] text-indigo-450 hover:text-indigo-400 font-bold uppercase tracking-wider transition-colors shrink-0"
-                              >
-                                Dismiss
-                              </button>
-                            )}
-                          </div>
-                          <p className="text-slate-400 leading-relaxed">{n.message}</p>
-                          <span className="text-[9px] text-slate-500 mt-1 block">{new Date(n.createdAt).toLocaleDateString()}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-900">
-              <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center">
-                <User className="w-5 h-5 text-slate-400" />
-              </div>
-              <div className="hidden sm:block">
-                <h4 className="text-sm font-semibold">Premium Investor</h4>
-                <p className="text-[10px] text-slate-500 uppercase font-semibold">Investor Profile</p>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* CONTAINER */}
-        <div className="flex-1 p-6 md:p-8 space-y-8">
-          {loadingData ? (
-            <div className="space-y-8 animate-pulse">
-              {/* SKELETON OVERVIEW CARDS */}
-              <div className="grid grid-cols-2 gap-6">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="bg-slate-900/20 border border-slate-900/50 rounded-2xl p-5 space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div className="h-3 w-16 bg-slate-850 rounded" />
-                      <div className="h-4 w-4 bg-slate-850 rounded-full" />
-                    </div>
-                    <div className="h-6 w-24 bg-slate-850 rounded" />
-                    <div className="h-3 w-20 bg-slate-855 rounded" />
-                  </div>
-                ))}
-              </div>
-              {/* SKELETON CHART & SIDEBAR */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                <div className="xl:col-span-2 bg-slate-900/20 border border-slate-900/50 rounded-3xl p-6 h-[400px] flex flex-col justify-between">
-                  <div className="h-6 w-48 bg-slate-850 rounded" />
-                  <div className="h-[280px] bg-slate-850/40 rounded-2xl" />
-                </div>
-                <div className="space-y-8">
-                  <div className="bg-slate-900/20 border border-slate-900/50 rounded-3xl p-6 h-56 space-y-4">
-                    <div className="h-4 w-32 bg-slate-850 rounded" />
-                    <div className="h-12 bg-slate-850/40 rounded-xl" />
-                    <div className="h-12 bg-slate-850/40 rounded-xl" />
-                  </div>
-                  <div className="bg-slate-900/20 border border-slate-900/50 rounded-3xl p-6 h-48 space-y-4">
-                    <div className="h-4 w-32 bg-slate-855 rounded" />
-                    <div className="h-10 bg-slate-850/40 rounded-xl" />
-                    <div className="h-10 bg-slate-850/40 rounded-xl" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* OVERVIEW CARDS */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-slate-900/30 border border-slate-900 rounded-2xl p-5 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Portfolio Value</span>
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
-              </div>
-              <h3 className="text-xl font-bold">${portfolioValue.toLocaleString()}</h3>
-              <p className="text-[10px] text-emerald-400 mt-2 font-semibold">+${totalProfit.toLocaleString()} Valuation</p>
-            </div>
-
-            <div className="bg-slate-900/30 border border-slate-900 rounded-2xl p-5 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Invested</span>
-                <DollarSign className="w-4 h-4 text-indigo-400" />
-              </div>
-              <h3 className="text-xl font-bold">${totalInvested.toLocaleString()}</h3>
-              <p className="text-[10px] text-slate-500 mt-2 font-semibold">Across {activePlanCount} Active {activePlanCount === 1 ? "Plan" : "Plans"}</p>
-            </div>
-
-            <div className="bg-slate-900/30 border border-slate-900 rounded-2xl p-5 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Profit</span>
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
-              </div>
-              <h3 className="text-xl font-bold">${totalProfit.toLocaleString()}</h3>
-              <p className="text-[10px] text-emerald-400 mt-2 font-semibold">+{totalInvested > 0 ? Math.round((totalProfit / totalInvested) * 100) : 0}% Total Increment</p>
-            </div>
-
-            <div className="bg-slate-900/30 border border-slate-900 rounded-2xl p-5 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Withdrawals</span>
-                <ArrowUpRight className="w-4 h-4 text-red-400" />
-              </div>
-              <h3 className="text-xl font-bold">${approvedWithdrawalTotal.toLocaleString()}</h3>
-              <p className="text-[10px] text-red-400 mt-2 font-semibold">Total Requested Payout</p>
-            </div>
-          </div>
-
-          {/* MAIN GRAPH / GRAPH WORKSPACE */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            {/* TABS SELECTOR & CHART CONTENT */}
-            <div className="xl:col-span-2 bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm flex flex-col justify-between min-h-[400px]">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-900/60">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setActiveTab("analytics")}
-                    className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all ${activeTab === "analytics" ? "bg-indigo-650 text-white" : "text-slate-400 hover:text-white"}`}
-                  >
-                    Performance Charts
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("investments")}
-                    className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all ${activeTab === "investments" ? "bg-indigo-650 text-white" : "text-slate-400 hover:text-white"}`}
-                  >
-                    My Holdings
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("transactions")}
-                    className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all ${activeTab === "transactions" ? "bg-indigo-650 text-white" : "text-slate-400 hover:text-white"}`}
-                  >
-                    Tables Logs
-                  </button>
-                </div>
-              </div>
+            <Skeleton className="xl:col-span-2 h-[400px] rounded-card" />
+            <div className="space-y-8">
+              <Skeleton className="h-56 rounded-card" />
+              <Skeleton className="h-48 rounded-card" />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* STAT TILES */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatTile
+              label="Portfolio Value"
+              value={`$${portfolioValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+              icon={<TrendingUp className="w-4 h-4" />}
+              tone="profit"
+              delta={`+$${totalProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+              deltaPositive
+              subtext="Valuation"
+            />
+            <StatTile
+              label="Total Invested"
+              value={`$${totalInvested.toLocaleString()}`}
+              icon={<DollarSign className="w-4 h-4" />}
+              tone="brand"
+              subtext={`Across ${activePlanCount} Active ${activePlanCount === 1 ? "Plan" : "Plans"}`}
+            />
+            <StatTile
+              label="Total Profit"
+              value={`$${totalProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+              icon={<TrendingUp className="w-4 h-4" />}
+              tone="profit"
+              delta={`+${totalInvested > 0 ? Math.round((totalProfit / totalInvested) * 100) : 0}%`}
+              deltaPositive
+              subtext="Total Increment"
+            />
+            <StatTile
+              label="Withdrawals"
+              value={`$${approvedWithdrawalTotal.toLocaleString()}`}
+              icon={<ArrowUpRight className="w-4 h-4" />}
+              tone="loss"
+              subtext="Total Requested Payout"
+            />
+          </div>
 
-              <div className="flex-1">
+          {/* MAIN WORKSPACE */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <Card className="xl:col-span-2 flex flex-col">
+              <CardHeader className="justify-start">
+                <Tabs
+                  variant="pill"
+                  activeId={activeTab}
+                  onChange={(id) => setActiveTab(id as typeof activeTab)}
+                  items={[
+                    { id: "analytics", label: "Performance Charts" },
+                    { id: "investments", label: "My Holdings" },
+                    { id: "transactions", label: "Tables Logs" },
+                  ]}
+                />
+              </CardHeader>
+
+              <CardBody className="flex-1">
                 {activeTab === "analytics" && (
-                  <div className="space-y-6">
+                  <div className="space-y-8">
                     <div>
-                      <h4 className="text-sm font-semibold text-slate-300">Portfolio Growth</h4>
-                      <div className="h-64 mt-4 w-full">
+                      <h4 className="text-sm font-semibold text-text-secondary mb-2">Portfolio Growth</h4>
+                      <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={portfolioGrowthData}>
                             <defs>
                               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                                <stop offset="5%" stopColor={chartTheme.seriesBrand} stopOpacity={0.3} />
+                                <stop offset="95%" stopColor={chartTheme.seriesBrand} stopOpacity={0} />
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                            <XAxis dataKey="name" stroke="#64748b" fontSize={10} />
-                            <YAxis stroke="#64748b" fontSize={10} />
-                            <Tooltip contentStyle={{ backgroundColor: "#0f172a", borderColor: "#1e293b" }} />
-                            <Area type="monotone" dataKey="value" stroke="#6366f1" fillOpacity={1} fill="url(#colorValue)" />
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                            <XAxis dataKey="name" stroke={chartTheme.axis} fontSize={10} />
+                            <YAxis stroke={chartTheme.axis} fontSize={10} />
+                            <Tooltip content={<ChartTooltip formatter={(v) => `$${v.toLocaleString()}`} />} cursor={{ stroke: chartTheme.grid }} />
+                            <Area type="monotone" dataKey="value" name="Portfolio Value" stroke={chartTheme.seriesBrand} fillOpacity={1} fill="url(#colorValue)" />
                           </AreaChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
 
-                    <div className="pt-6 border-t border-slate-900/60">
-                      <h4 className="text-sm font-semibold text-slate-300">Monthly Profit History</h4>
-                      <div className="h-48 mt-4 w-full">
+                    <div className="pt-6 border-t border-border-subtle">
+                      <h4 className="text-sm font-semibold text-text-secondary mb-2">Monthly Profit History</h4>
+                      <div className="h-48 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={portfolioProfitHistory}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                            <XAxis dataKey="name" stroke="#64748b" fontSize={10} />
-                            <YAxis stroke="#64748b" fontSize={10} />
-                            <Tooltip contentStyle={{ backgroundColor: "#0f172a", borderColor: "#1e293b" }} />
-                            <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                            <XAxis dataKey="name" stroke={chartTheme.axis} fontSize={10} />
+                            <YAxis stroke={chartTheme.axis} fontSize={10} />
+                            <Tooltip content={<ChartTooltip formatter={(v) => `$${v.toLocaleString()}`} />} cursor={{ fill: chartTheme.grid, opacity: 0.3 }} />
+                            <Bar dataKey="profit" name="Profit" fill={chartTheme.seriesProfit} radius={[4, 4, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
@@ -602,373 +358,245 @@ export default function UserDashboardPage() {
 
                 {activeTab === "investments" && (
                   <div className="space-y-6">
-                    <h4 className="text-sm font-semibold text-slate-300">My Active Investments</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {liveInvestments.filter(inv => inv.status === "ACTIVE").length === 0 ? (
-                        <p className="text-xs text-slate-500 py-4">No active investments yet. Go to Deposit Funds to start earning.</p>
-                      ) : (
-                        liveInvestments.filter(inv => inv.status === "ACTIVE").map((inv) => {
+                    <h4 className="text-sm font-semibold text-text-secondary">My Active Investments</h4>
+                    {activeInvestments.length === 0 ? (
+                      <EmptyState title="No active investments yet" description="Deposit funds to start earning on a plan." />
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {activeInvestments.map((inv) => {
                           const profit = inv.balance - inv.amount;
-                          const percent = inv.amount > 0 ? (profit / inv.amount) * 100 : 0;
+                          const rate = inv.plan?.dailyGrowthRate ?? DEFAULT_DAILY_GROWTH_RATE;
                           return (
-                            <div key={inv.id} className="bg-slate-950/40 border border-slate-900 rounded-2xl p-5 space-y-4">
+                            <Card key={inv.id} className="p-5 space-y-4">
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-400">
-                                    {inv.plan?.name || "Standard Plan"}
+                                  <span className="text-[10px] uppercase font-bold tracking-wider text-brand-400">{inv.plan?.name || "Standard Plan"}</span>
+                                  <h4 className="font-bold text-sm text-text-primary mt-1">{inv.companyName || "Diversified Index"}</h4>
+                                </div>
+                                <Badge variant="active">+{(rate * 100).toFixed(2)}% Daily</Badge>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border-subtle">
+                                <div>
+                                  <span className="text-[9px] text-text-muted block">Total Invested</span>
+                                  <span className="font-bold text-xs text-text-secondary tabular-nums">
+                                    ${inv.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </span>
-                                  <h4 className="font-bold text-sm text-slate-200 mt-1">
-                                    {inv.companyName || "Diversified Index"}
-                                  </h4>
-                                </div>
-                                <span className="text-[10px] bg-emerald-500/10 text-emerald-450 px-2 py-0.5 rounded-full font-bold">
-                                  +5.0% Daily Money Market
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-900/60">
-                                <div>
-                                  <span className="text-[9px] text-slate-500 block">Total Invested</span>
-                                  <span className="font-bold text-xs text-slate-300">${inv.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                                 <div>
-                                  <span className="text-[9px] text-slate-500 block">Live Profit</span>
-                                  <span className="font-bold text-xs text-emerald-400">+${profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  <span className="text-[9px] text-text-muted block">Live Profit</span>
+                                  <span className="font-bold text-xs text-profit tabular-nums">
+                                    +${profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
                                 </div>
                                 <div>
-                                  <span className="text-[9px] text-slate-500 block">Growth Valuation</span>
-                                  <span className="font-bold text-xs text-white">${inv.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  <span className="text-[9px] text-text-muted block">Growth Valuation</span>
+                                  <span className="font-bold text-xs text-text-primary tabular-nums">
+                                    ${inv.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
                                 </div>
                               </div>
-                              <div className="pt-3 border-t border-slate-900/60 flex justify-end">
-                                <button
-                                  onClick={() => handleOpenUpgradeModal(inv)}
-                                  className="text-[10px] font-bold px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all cursor-pointer"
-                                >
+                              <div className="pt-3 border-t border-border-subtle flex justify-end">
+                                <Button size="sm" onClick={() => handleOpenUpgradeModal(inv)}>
                                   Upgrade Plan
-                                </button>
+                                </Button>
                               </div>
-                            </div>
+                            </Card>
                           );
-                        })
-                      )}
-                    </div>
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {activeTab === "transactions" && (
-                  <div className="space-y-6 overflow-x-auto">
+                  <div className="space-y-8">
                     <div>
-                      <h4 className="text-sm font-semibold text-slate-300 mb-4">Deposits Queue</h4>
-                      <table className="w-full text-left text-xs text-slate-400">
-                        <thead>
-                          <tr className="border-b border-slate-900 text-slate-500 uppercase tracking-wider font-semibold">
-                            <th className="py-2">Deposit ID</th>
-                            <th className="py-2">Date</th>
-                            <th className="py-2">Plan</th>
-                            <th className="py-2 text-right">Amount</th>
-                            <th className="py-2 text-right">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {deposits.length === 0 ? (
-                            <tr>
-                              <td colSpan={5} className="py-3 text-center text-slate-500">No deposits initiated yet.</td>
-                            </tr>
-                          ) : (
-                            deposits.map((d, i) => (
-                              <tr key={i} className="border-b border-slate-900/60 hover:bg-slate-900/20">
-                                <td className="py-3 font-semibold text-white truncate max-w-[80px]">{d.id}</td>
-                                <td className="py-3">{new Date(d.createdAt).toLocaleDateString()}</td>
-                                <td className="py-3">{d.plan?.name}</td>
-                                <td className="py-3 text-right font-bold text-white">${d.amount.toLocaleString()}</td>
-                                <td className="py-3 text-right">
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${d.status === "APPROVED" ? "bg-emerald-500/10 text-emerald-400" : d.status === "PENDING" ? "bg-yellow-500/10 text-yellow-400" : "bg-red-500/10 text-red-400"}`}>
-                                    {d.status}
-                                  </span>
-                                </td>
+                      <h4 className="text-sm font-semibold text-text-secondary mb-3">Deposits Queue</h4>
+                      {deposits.length === 0 ? (
+                        <EmptyState title="No deposits initiated yet" />
+                      ) : (
+                        <TableContainer>
+                          <Table>
+                            <Thead>
+                              <tr>
+                                <Th>Deposit ID</Th>
+                                <Th>Date</Th>
+                                <Th>Plan</Th>
+                                <Th className="text-right">Amount</Th>
+                                <Th className="text-right">Status</Th>
                               </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
+                            </Thead>
+                            <Tbody>
+                              {deposits.map((d) => (
+                                <Tr key={d.id}>
+                                  <Td className="font-semibold text-text-primary truncate max-w-[100px]">{d.id}</Td>
+                                  <Td>{new Date(d.createdAt).toLocaleDateString()}</Td>
+                                  <Td>{d.plan?.name}</Td>
+                                  <Td className="text-right font-bold text-text-primary">${d.amount.toLocaleString()}</Td>
+                                  <Td className="text-right">
+                                    <Badge variant={statusToVariant(d.status)}>{d.status}</Badge>
+                                  </Td>
+                                </Tr>
+                              ))}
+                            </Tbody>
+                          </Table>
+                        </TableContainer>
+                      )}
                     </div>
 
-                    <div className="pt-6 border-t border-slate-900/60">
-                      <h4 className="text-sm font-semibold text-slate-300 mb-4">Withdrawals Queue</h4>
-                      <table className="w-full text-left text-xs text-slate-400">
-                        <thead>
-                          <tr className="border-b border-slate-900 text-slate-500 uppercase tracking-wider font-semibold">
-                            <th className="py-2">Withdrawal ID</th>
-                            <th className="py-2">Date</th>
-                            <th className="py-2">Wallet Address</th>
-                            <th className="py-2 text-right">Amount</th>
-                            <th className="py-2 text-right">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {withdrawals.length === 0 ? (
-                            <tr>
-                              <td colSpan={5} className="py-3 text-center text-slate-500">No withdrawal records found.</td>
-                            </tr>
-                          ) : (
-                            withdrawals.map((withdrawal) => (
-                              <tr key={withdrawal.id} className="border-b border-slate-900/60 hover:bg-slate-900/20">
-                                <td className="py-3 font-semibold text-white truncate max-w-[80px]">{withdrawal.id}</td>
-                                <td className="py-3">{new Date(withdrawal.createdAt).toLocaleDateString()}</td>
-                                <td className="py-3 font-mono max-w-[180px] truncate">{withdrawal.address}</td>
-                                <td className="py-3 text-right font-bold text-white">${withdrawal.amount.toLocaleString()}</td>
-                                <td className="py-3 text-right">
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${withdrawal.status === "APPROVED" ? "bg-emerald-500/10 text-emerald-400" : withdrawal.status === "PROCESSING" ? "bg-indigo-500/10 text-indigo-300" : withdrawal.status === "PENDING" ? "bg-yellow-500/10 text-yellow-400" : "bg-red-500/10 text-red-400"}`}>
-                                    {withdrawal.status}
-                                  </span>
-                                </td>
+                    <div>
+                      <h4 className="text-sm font-semibold text-text-secondary mb-3">Withdrawals Queue</h4>
+                      {withdrawals.length === 0 ? (
+                        <EmptyState title="No withdrawal records found" />
+                      ) : (
+                        <TableContainer>
+                          <Table>
+                            <Thead>
+                              <tr>
+                                <Th>Withdrawal ID</Th>
+                                <Th>Date</Th>
+                                <Th>Destination</Th>
+                                <Th className="text-right">Amount</Th>
+                                <Th className="text-right">Status</Th>
                               </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
+                            </Thead>
+                            <Tbody>
+                              {withdrawals.map((w) => (
+                                <Tr key={w.id}>
+                                  <Td className="font-semibold text-text-primary truncate max-w-[100px]">{w.id}</Td>
+                                  <Td>{new Date(w.createdAt).toLocaleDateString()}</Td>
+                                  <Td className="font-mono max-w-[180px] truncate">{w.address}</Td>
+                                  <Td className="text-right font-bold text-text-primary">${w.amount.toLocaleString()}</Td>
+                                  <Td className="text-right">
+                                    <Badge variant={statusToVariant(w.status)}>{w.status}</Badge>
+                                  </Td>
+                                </Tr>
+                              ))}
+                            </Tbody>
+                          </Table>
+                        </TableContainer>
+                      )}
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
+              </CardBody>
+            </Card>
 
             {/* SIDEBAR WIDGETS */}
             <div className="space-y-8">
-              {/* NOTIFICATIONS */}
-              <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm">
-                <h4 className="text-sm font-semibold mb-4 text-slate-300 flex items-center gap-2">
-                  <Bell className="w-5 h-5 text-indigo-400" /> System Notifications
-                </h4>
-                <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <h4 className="text-sm font-semibold text-text-secondary flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-brand-400" /> System Notifications
+                  </h4>
+                </CardHeader>
+                <CardBody className="space-y-3">
                   {notifications.length === 0 ? (
-                    <div className="text-xs text-slate-500 text-center py-4">No notifications yet.</div>
+                    <EmptyState icon={<Bell className="w-5 h-5" />} title="No notifications yet" />
                   ) : (
                     notifications.map((n) => (
-                      <div key={n.id} className={`p-4 bg-slate-950/50 border rounded-2xl transition-colors ${!n.read ? "border-indigo-500/30 bg-indigo-500/5" : "border-slate-900 hover:border-slate-800"}`}>
+                      <div
+                        key={n.id}
+                        className={`p-4 border rounded-2xl transition-colors ${!n.read ? "border-brand-500/30 bg-brand-500/5" : "border-border-subtle bg-surface-1/40 hover:border-border-strong"}`}
+                      >
                         <div className="flex justify-between items-start mb-1 gap-2">
                           <div className="flex items-center gap-1.5">
-                            {!n.read && <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full shrink-0 animate-pulse" />}
-                            <h5 className="font-bold text-xs text-slate-200">{n.title}</h5>
+                            {!n.read && <span className="w-1.5 h-1.5 bg-brand-400 rounded-full shrink-0 animate-pulse" />}
+                            <h5 className="font-bold text-xs text-text-primary">{n.title}</h5>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[10px] text-slate-500">{new Date(n.createdAt).toLocaleDateString()}</span>
+                            <span className="text-[10px] text-text-muted">{new Date(n.createdAt).toLocaleDateString()}</span>
                             {!n.read && (
                               <button
                                 onClick={() => handleMarkAsRead(n.id)}
-                                className="text-[9px] text-indigo-450 hover:text-indigo-400 font-bold uppercase tracking-wider transition-colors"
+                                className="text-[9px] text-brand-400 hover:text-brand-300 font-bold uppercase tracking-wider transition-colors"
                               >
                                 Dismiss
                               </button>
                             )}
                           </div>
                         </div>
-                        <p className="text-[11px] text-slate-400 leading-relaxed">{n.message}</p>
+                        <p className="text-[11px] text-text-muted leading-relaxed">{n.message}</p>
                       </div>
                     ))
                   )}
-                </div>
-              </div>
+                </CardBody>
+              </Card>
 
-              {/* RECENT ACTIVITIES */}
-              <div className="bg-slate-900/30 border border-slate-900 rounded-3xl p-6 shadow-sm">
-                <h4 className="text-sm font-semibold mb-4 text-slate-300 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-purple-400" /> Recent Transactions
-                </h4>
-                <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <h4 className="text-sm font-semibold text-text-secondary flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-accent" /> Recent Transactions
+                  </h4>
+                </CardHeader>
+                <CardBody className="divide-y divide-border-subtle">
                   {transactions.length === 0 ? (
-                    <div className="text-xs text-slate-500 text-center py-4">No transactions recorded.</div>
+                    <EmptyState icon={<Clock className="w-5 h-5" />} title="No transactions recorded" />
                   ) : (
-                    transactions.map((t, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs py-2 border-b border-slate-900/60 last:border-b-0">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${t.type === "WITHDRAWAL" || t.amount < 0 ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
-                            {t.type === "WITHDRAWAL" || t.amount < 0 ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
-                          </div>
-                          <div className="min-w-0">
-                            <h5 className="font-bold text-slate-200 truncate">{t.description}</h5>
-                            <span className="text-[10px] text-slate-500">{new Date(t.createdAt).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <span className={`font-bold ml-2 shrink-0 ${t.type === "WITHDRAWAL" || t.amount < 0 ? "text-red-400" : "text-emerald-400"}`}>
-                          {t.type === "WITHDRAWAL" || t.amount < 0 ? "-" : "+"}${Math.abs(t.amount).toLocaleString()}
-                        </span>
-                      </div>
-                    ))
+                    transactions.map((t) => <TransactionRow key={t.id} tx={t} />)
                   )}
-                </div>
-              </div>
+                </CardBody>
+              </Card>
             </div>
           </div>
-            </>
-          )}
-        </div>
-      </main>
-
-      {/* MOBILE DRAWER */}
-      {isMobileNavOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md lg:hidden flex">
-          <div className="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between h-full">
-            <div className="space-y-8">
-              <div className="flex items-center justify-between">
-                <Link href="/" className="flex items-center gap-2">
-                  <TrendingUp className="text-indigo-400 w-6 h-6" />
-                  <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
-                    Vestriq
-                  </span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setIsMobileNavOpen(false)}
-                  className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileNavOpen(false);
-                    router.push("/dashboard");
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 bg-indigo-600/10 text-indigo-300 rounded-xl text-sm font-semibold border border-indigo-500/20 text-left"
-                >
-                  <Briefcase className="w-5 h-5" /> Portfolio Overview
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileNavOpen(false);
-                    router.push("/dashboard/plans");
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
-                >
-                  <ShieldCheck className="w-5 h-5" /> Investment Plans
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileNavOpen(false);
-                    router.push("/dashboard/deposit");
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
-                >
-                  <Wallet className="w-5 h-5" /> Deposit Funds
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileNavOpen(false);
-                    router.push("/dashboard/withdraw");
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900/50 text-slate-400 hover:text-white rounded-xl text-sm font-semibold transition-colors text-left"
-                >
-                  <ArrowDownLeft className="w-5 h-5" /> Request Payout
-                </button>
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMobileNavOpen(false);
-                      router.push("/admin");
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-650/10 text-indigo-400 hover:text-indigo-300 rounded-xl text-sm font-semibold border border-transparent transition-colors text-left"
-                  >
-                    <ShieldCheck className="w-5 h-5 text-indigo-400" /> Admin Control
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileNavOpen(false);
-                  handleLogout();
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-xl text-sm font-semibold transition-all"
-              >
-                <LogOut className="w-5 h-5" /> Log Out
-              </button>
-            </div>
-          </div>
-          <div className="flex-1" onClick={() => setIsMobileNavOpen(false)} />
-        </div>
+        </>
       )}
 
       {/* UPGRADE PLAN MODAL */}
-      {upgradingInvestment && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-left">
-            <div>
-              <h3 className="text-lg font-bold text-slate-100">Upgrade Investment Package</h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Transition your active holding <strong>{upgradingInvestment.companyName || "Diversified Index"}</strong> to a higher yielding wealth structure.
-              </p>
-            </div>
+      <Modal
+        open={!!upgradingInvestment}
+        onClose={() => setUpgradingInvestment(null)}
+        title="Upgrade Investment Package"
+        description={`Transition your active holding ${upgradingInvestment?.companyName || "Diversified Index"} to a higher yielding wealth structure.`}
+      >
+        {upgradeError && <div className="p-3 bg-danger/10 border border-danger/20 text-danger text-xs rounded-xl mb-4">{upgradeError}</div>}
 
-            {upgradeError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
-                {upgradeError}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-2">Current Active Plan</label>
-              <div className="bg-slate-950/40 border border-slate-850 rounded-xl p-3 text-xs flex justify-between">
-                <span className="font-semibold text-slate-200">{upgradingInvestment.plan?.name || "Standard Plan"}</span>
-                <span className="font-mono text-slate-400">${upgradingInvestment.amount.toLocaleString()} Principal</span>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Select New Upgrade Package</label>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {availablePlans
-                  .filter(p => p.id !== upgradingInvestment.plan?.id)
-                  .map((plan) => (
-                    <button
-                      key={plan.id}
-                      type="button"
-                      onClick={() => setSelectedUpgradePlanId(plan.id)}
-                      className={`w-full text-left p-3.5 rounded-xl border transition-all flex justify-between items-center ${selectedUpgradePlanId === plan.id ? "bg-indigo-600/10 border-indigo-500 text-indigo-300" : "bg-slate-950/30 border-slate-850 text-slate-400 hover:border-slate-700"}`}
-                    >
-                      <div>
-                        <h5 className="font-bold text-xs text-slate-200">{plan.name}</h5>
-                        <p className="text-[10px] text-slate-500 mt-0.5">Limits: ${plan.minAmount.toLocaleString()} - ${plan.maxAmount.toLocaleString()}</p>
-                      </div>
-                      <span className="text-[10px] bg-emerald-500/10 text-emerald-450 px-2 py-0.5 rounded font-bold font-mono">
-                        Upgrade
-                      </span>
-                    </button>
-                  ))}
-                {availablePlans.filter(p => p.id !== upgradingInvestment.plan?.id).length === 0 && (
-                  <p className="text-xs text-slate-550 italic text-center py-4">No other upgrade plans available.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-4 border-t border-slate-800">
-              <button
-                onClick={handleUpgradeSubmit}
-                disabled={upgradingLoading || !selectedUpgradePlanId}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold py-3 rounded-xl transition-colors text-white disabled:opacity-50 cursor-pointer"
-              >
-                {upgradingLoading ? "Processing Upgrade..." : "Confirm Upgrade"}
-              </button>
-              <button
-                onClick={() => setUpgradingInvestment(null)}
-                className="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-xs font-semibold px-5 py-3 rounded-xl transition-colors text-slate-400 cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
+        <div className="mb-5">
+          <label className="block text-[10px] text-text-muted uppercase tracking-wider font-semibold mb-2">Current Active Plan</label>
+          <div className="bg-surface-1 border border-border-subtle rounded-xl p-3 text-xs flex justify-between">
+            <span className="font-semibold text-text-primary">{upgradingInvestment?.plan?.name || "Standard Plan"}</span>
+            <span className="font-mono text-text-muted">${upgradingInvestment?.amount.toLocaleString()} Principal</span>
           </div>
         </div>
-      )}
-    </div>
+
+        <div className="space-y-3">
+          <label className="block text-[10px] text-text-muted uppercase tracking-wider font-semibold">Select New Upgrade Package</label>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {availablePlans
+              .filter((p) => p.id !== upgradingInvestment?.plan?.id)
+              .map((plan) => (
+                <button
+                  key={plan.id}
+                  type="button"
+                  onClick={() => setSelectedUpgradePlanId(plan.id)}
+                  className={`w-full text-left p-3.5 rounded-xl border transition-all flex justify-between items-center ${
+                    selectedUpgradePlanId === plan.id ? "bg-brand-600/10 border-brand-500 text-brand-300" : "bg-surface-1 border-border-subtle text-text-muted hover:border-border-strong"
+                  }`}
+                >
+                  <div>
+                    <h5 className="font-bold text-xs text-text-primary">{plan.name}</h5>
+                    <p className="text-[10px] text-text-muted mt-0.5">
+                      Limits: ${plan.minAmount.toLocaleString()} - ${plan.maxAmount.toLocaleString()}
+                    </p>
+                  </div>
+                  {typeof plan.dailyGrowthRate === "number" && <Badge variant="approved">{(plan.dailyGrowthRate * 100).toFixed(2)}%/day</Badge>}
+                </button>
+              ))}
+            {availablePlans.filter((p) => p.id !== upgradingInvestment?.plan?.id).length === 0 && (
+              <p className="text-xs text-text-muted italic text-center py-4">No other upgrade plans available.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-5 mt-5 border-t border-border-subtle">
+          <Button onClick={handleUpgradeSubmit} isLoading={upgradingLoading} disabled={!selectedUpgradePlanId} className="flex-1">
+            Confirm Upgrade
+          </Button>
+          <Button variant="outline" onClick={() => setUpgradingInvestment(null)}>
+            Cancel
+          </Button>
+        </div>
+      </Modal>
+    </DashboardShell>
   );
 }

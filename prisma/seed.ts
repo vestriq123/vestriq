@@ -117,24 +117,28 @@ async function main() {
       description: "Entry-level plan curated for steady diversified holdings. Perfect for beginners.",
       minAmount: 299,
       maxAmount: 4999,
+      durationMonths: 3,
     },
     {
       name: "Premium Growth",
       description: "Dynamic mid-tier portfolio optimization targeted at high-yielding assets.",
       minAmount: 5000,
       maxAmount: 24999,
+      durationMonths: 6,
     },
     {
       name: "Vanguard Select",
       description: "Elite tier private equity fund options custom tailored for high net worth investors.",
       minAmount: 25000,
       maxAmount: 50000,
+      durationMonths: 9,
     },
     {
       name: "Apex Sovereign",
       description: "Ultimate wealth growth container with institutional backing and strict lockup optimization.",
       minAmount: 50000,
       maxAmount: 100000,
+      durationMonths: 12,
     },
   ];
 
@@ -145,6 +149,7 @@ async function main() {
         minAmount: plan.minAmount,
         maxAmount: plan.maxAmount,
         description: plan.description,
+        durationMonths: plan.durationMonths,
       },
       create: plan,
     });

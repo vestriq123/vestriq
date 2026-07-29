@@ -54,6 +54,14 @@ export class UserRepository extends BaseRepository {
       return user;
     });
   }
+
+  // Soft delete a user
+  async softDelete(id: string) {
+    return this.db.user.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
 }
 
 export const userRepository = new UserRepository();

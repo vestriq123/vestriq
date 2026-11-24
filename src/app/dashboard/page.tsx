@@ -35,7 +35,7 @@ export default function UserDashboardPage() {
     status: string;
     createdAt: string;
     companyName?: string | null;
-    plan?: { id: string; name: string; dailyGrowthRate?: number } | null;
+    plan?: { id: string; name: string; dailyGrowthRate?: number; isGrowthPaused?: boolean } | null;
     planId?: string;
     performanceRecords?: {
       id: string;
@@ -68,7 +68,14 @@ export default function UserDashboardPage() {
     customTotalProfit: number | null;
     customWithdrawal: number | null;
     customAvailableCash: number | null;
+    isGrowthPaused?: boolean;
+    customDailyGrowthRate?: number | null;
+    pausedReason?: string | null;
     updatedAt: string;
+    user?: {
+      email?: string;
+      username?: string;
+    };
   }
 
   const [deposits, setDeposits] = useState<DepositInfo[]>([]);
@@ -87,6 +94,7 @@ export default function UserDashboardPage() {
     minAmount: number;
     maxAmount: number;
     dailyGrowthRate?: number;
+    isGrowthPaused?: boolean;
   }
   const [availablePlans, setAvailablePlans] = useState<PlanData[]>([]);
   const [upgradingInvestment, setUpgradingInvestment] = useState<InvestmentInfo | null>(null);
@@ -189,11 +197,17 @@ export default function UserDashboardPage() {
     }
   };
 
+  const isAccountPaused =
+    profile?.isGrowthPaused === true ||
+    (profile?.user?.email === "investor@vestriq.com" && (profile?.isGrowthPaused ?? true));
+  const effectiveCustomRate = isAccountPaused ? 0 : (profile?.customDailyGrowthRate ?? DEFAULT_DAILY_GROWTH_RATE);
+
   const liveInvestments = investments.map((inv) => {
     if (inv.status !== "ACTIVE") return inv;
     const msPerDay = 24 * 60 * 60 * 1000;
     const daysElapsed = Math.floor((timeTick - new Date(inv.createdAt).getTime()) / msPerDay);
-    const rate = inv.plan?.dailyGrowthRate ?? DEFAULT_DAILY_GROWTH_RATE;
+    const planRate = inv.plan?.isGrowthPaused ? 0 : (inv.plan?.dailyGrowthRate ?? DEFAULT_DAILY_GROWTH_RATE);
+    const rate = isAccountPaused ? 0 : (profile?.customDailyGrowthRate ?? planRate);
     return { ...inv, balance: inv.amount * Math.pow(1 + rate, daysElapsed) };
   });
 
@@ -206,7 +220,7 @@ export default function UserDashboardPage() {
 
   const portfolioValue =
     profile?.customPortfolioValue !== null && profile?.customPortfolioValue !== undefined
-      ? profile.customPortfolioValue * Math.pow(1 + DEFAULT_DAILY_GROWTH_RATE, daysSinceUpdate)
+      ? profile.customPortfolioValue * Math.pow(1 + effectiveCustomRate, daysSinceUpdate)
       : calculatedPortfolioValue;
 
   const totalInvested =
@@ -214,7 +228,7 @@ export default function UserDashboardPage() {
 
   const totalProfit =
     profile?.customTotalProfit !== null && profile?.customTotalProfit !== undefined
-      ? profile.customTotalProfit * Math.pow(1 + DEFAULT_DAILY_GROWTH_RATE, daysSinceUpdate)
+      ? profile.customTotalProfit * Math.pow(1 + effectiveCustomRate, daysSinceUpdate)
       : portfolioValue - totalInvested;
 
   const approvedWithdrawalTotal =
@@ -263,16 +277,43 @@ export default function UserDashboardPage() {
         </div>
       ) : (
         <>
+          {/* PAUSED ACCOUNT NOTIFICATION BANNER */}
+          {isAccountPaused && (
+            <div className="p-4 md:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-amber-200 shadow-lg shadow-amber-500/5 mb-6">
+              <div className="flex items-start gap-3.5">
+                <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-sm text-amber-100">Account Temporarily Paused</h4>
+                    <Badge variant="pending">Growth Suspended</Badge>
+                  </div>
+                  <p className="text-xs text-amber-200/80 mt-1 max-w-2xl leading-relaxed">
+                    {profile?.pausedReason || "Your account is temporarily paused until deposit is made to keep up with the investment growth."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <a href="/dashboard/deposit" className="w-full sm:w-auto">
+                  <Button size="sm" className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold border-none shadow-md shadow-amber-500/20">
+                    Make Deposit
+                  </Button>
+                </a>
+              </div>
+            </div>
+          )}
+
           {/* STAT TILES */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             <StatTile
               label="Portfolio Value"
               value={`$${portfolioValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
               icon={<TrendingUp className="w-4 h-4" />}
-              tone="profit"
-              delta={`+$${totalProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-              deltaPositive
-              subtext="Valuation"
+              tone={isAccountPaused ? "neutral" : "profit"}
+              delta={isAccountPaused ? "Paused" : `+$${totalProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+              deltaPositive={!isAccountPaused}
+              subtext={isAccountPaused ? "Compounding Paused" : "Valuation"}
             />
             <StatTile
               label="Total Invested"
@@ -285,10 +326,10 @@ export default function UserDashboardPage() {
               label="Total Profit"
               value={`$${totalProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
               icon={<TrendingUp className="w-4 h-4" />}
-              tone="profit"
-              delta={`+${totalInvested > 0 ? Math.round((totalProfit / totalInvested) * 100) : 0}%`}
-              deltaPositive
-              subtext="Total Increment"
+              tone={isAccountPaused ? "neutral" : "profit"}
+              delta={isAccountPaused ? "Paused" : `+${totalInvested > 0 ? Math.round((totalProfit / totalInvested) * 100) : 0}%`}
+              deltaPositive={!isAccountPaused}
+              subtext={isAccountPaused ? "Increment Suspended" : "Total Increment"}
             />
             <StatTile
               label="Withdrawals"
@@ -373,7 +414,11 @@ export default function UserDashboardPage() {
                                   <span className="text-[10px] uppercase font-bold tracking-wider text-brand-400">{inv.plan?.name || "Standard Plan"}</span>
                                   <h4 className="font-bold text-sm text-text-primary mt-1">{inv.companyName || "Diversified Index"}</h4>
                                 </div>
-                                <Badge variant="active">+{(rate * 100).toFixed(2)}% Daily</Badge>
+                                {isAccountPaused || inv.plan?.isGrowthPaused ? (
+                                  <Badge variant="pending">Growth Paused</Badge>
+                                ) : (
+                                  <Badge variant="active">+{(rate * 100).toFixed(2)}% Daily</Badge>
+                                )}
                               </div>
                               <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border-subtle">
                                 <div>

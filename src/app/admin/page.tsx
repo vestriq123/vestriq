@@ -125,6 +125,9 @@ export default function AdminDashboardPage() {
     customTotalProfit: number | null;
     customWithdrawal: number | null;
     customAvailableCash: number | null;
+    isGrowthPaused?: boolean;
+    customDailyGrowthRate?: number | null;
+    pausedReason?: string | null;
     idDocumentType: string | null;
     idDocumentUrl: string | null;
     ssn: string | null;
@@ -148,6 +151,9 @@ export default function AdminDashboardPage() {
   const [overrideTotalProfit, setOverrideTotalProfit] = useState("");
   const [overrideWithdrawal, setOverrideWithdrawal] = useState("");
   const [overrideAvailableCash, setOverrideAvailableCash] = useState("");
+  const [overrideIsGrowthPaused, setOverrideIsGrowthPaused] = useState(false);
+  const [overrideDailyGrowthRate, setOverrideDailyGrowthRate] = useState("");
+  const [overridePausedReason, setOverridePausedReason] = useState("");
   const [savingOverrides, setSavingOverrides] = useState(false);
   const [overrideError, setOverrideError] = useState("");
 
@@ -226,6 +232,9 @@ export default function AdminDashboardPage() {
     setOverrideTotalProfit(user.profile?.customTotalProfit?.toString() || "");
     setOverrideWithdrawal(user.profile?.customWithdrawal?.toString() || "");
     setOverrideAvailableCash(user.profile?.customAvailableCash?.toString() || "");
+    setOverrideIsGrowthPaused(user.profile?.isGrowthPaused ?? false);
+    setOverrideDailyGrowthRate(user.profile?.customDailyGrowthRate !== null && user.profile?.customDailyGrowthRate !== undefined ? (user.profile.customDailyGrowthRate * 100).toString() : "");
+    setOverridePausedReason(user.profile?.pausedReason || "Your account is temporarily paused until deposit is made to keep up with the investment growth.");
     setOverrideError("");
   };
 
@@ -243,6 +252,9 @@ export default function AdminDashboardPage() {
           totalProfit: overrideTotalProfit === "" ? null : Number(overrideTotalProfit),
           withdrawal: overrideWithdrawal === "" ? null : Number(overrideWithdrawal),
           availableCash: overrideAvailableCash === "" ? null : Number(overrideAvailableCash),
+          isGrowthPaused: overrideIsGrowthPaused,
+          dailyGrowthRate: overrideDailyGrowthRate === "" ? null : Number(overrideDailyGrowthRate),
+          pausedReason: overridePausedReason || null,
         }),
       });
       const data = await res.json();
@@ -257,6 +269,18 @@ export default function AdminDashboardPage() {
       setOverrideError("Network error occurred while saving overrides");
     } finally {
       setSavingOverrides(false);
+    }
+  };
+
+  const toggleUserGrowthPause = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/toggle-growth-pause`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        fetchUsers();
+      }
+    } catch (err) {
+      console.error("Failed to toggle growth pause for user", err);
     }
   };
 
@@ -283,14 +307,15 @@ export default function AdminDashboardPage() {
     minAmount: number;
     maxAmount: number;
     dailyGrowthRate: number;
+    isGrowthPaused: boolean;
     durationMonths: number;
     enabled: boolean;
   }
   const [plans, setPlans] = useState<PlanData[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
-  // dailyGrowthRate is edited in the form as a percentage (e.g. 5 = 5%/day)
-  // and converted to/from the decimal value (0.05) the API stores.
-  const emptyPlanForm = { id: "", name: "", description: "", minAmount: 0, maxAmount: 0, dailyGrowthRate: 5, durationMonths: 3, enabled: true };
+  // dailyGrowthRate is edited in the form as a percentage (e.g. 0.3 = 0.3%/day)
+  // and converted to/from the decimal value (0.003) the API stores.
+  const emptyPlanForm = { id: "", name: "", description: "", minAmount: 0, maxAmount: 0, dailyGrowthRate: 0.3, isGrowthPaused: false, durationMonths: 3, enabled: true };
   const [planForm, setPlanForm] = useState(emptyPlanForm);
   const [isEditingPlan, setIsEditingPlan] = useState(false);
   const [showPlanForm, setShowPlanForm] = useState(false);
@@ -608,6 +633,7 @@ export default function AdminDashboardPage() {
           minAmount: Number(planForm.minAmount),
           maxAmount: Number(planForm.maxAmount),
           dailyGrowthRate: Number(planForm.dailyGrowthRate) / 100,
+          isGrowthPaused: planForm.isGrowthPaused,
           durationMonths: Number(planForm.durationMonths),
           enabled: planForm.enabled,
         }),
@@ -642,6 +668,24 @@ export default function AdminDashboardPage() {
       }
     } catch (err) {
       console.error("Failed to update status", err);
+    }
+  };
+
+  const togglePlanGrowthPause = async (id: string, currentPaused: boolean) => {
+    try {
+      const res = await fetch(`/api/investment-plans/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isGrowthPaused: !currentPaused }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        fetchPlans();
+      } else {
+        alert(result.error?.message || "Failed to toggle growth pause");
+      }
+    } catch (err) {
+      console.error("Failed to toggle plan growth pause", err);
     }
   };
 
@@ -853,10 +897,19 @@ export default function AdminDashboardPage() {
                         </Td>
                         <Td>{new Date(u.createdAt).toLocaleDateString()}</Td>
                         <Td>
-                          <Badge variant={statusToVariant(u.verificationStatus || "PENDING")}>{u.verificationStatus || "PENDING"}</Badge>
+                          <div className="flex flex-col gap-1 items-start">
+                            <Badge variant={statusToVariant(u.verificationStatus || "PENDING")}>{u.verificationStatus || "PENDING"}</Badge>
+                            {u.profile?.isGrowthPaused && <Badge variant="pending">Growth Paused</Badge>}
+                          </div>
                         </Td>
                         <Td className="text-right">
                           <div className="flex justify-end gap-3 items-center">
+                            <button
+                              onClick={() => toggleUserGrowthPause(u.id)}
+                              className={cn("font-semibold text-xs", u.profile?.isGrowthPaused ? "text-profit hover:text-profit/80" : "text-amber-400 hover:text-amber-300")}
+                            >
+                              {u.profile?.isGrowthPaused ? "Resume Growth" : "Pause Growth"}
+                            </button>
                             <button onClick={() => setSelectedUserForDetails(u)} className="text-profit hover:text-profit/80 font-semibold">
                               View Details
                             </button>
@@ -894,6 +947,44 @@ export default function AdminDashboardPage() {
               <Input type="number" label="Total Profit ($)" placeholder="Calculated automatically" value={overrideTotalProfit} onChange={(e) => setOverrideTotalProfit(e.target.value)} />
               <Input type="number" label="Withdrawals ($)" placeholder="Calculated automatically" value={overrideWithdrawal} onChange={(e) => setOverrideWithdrawal(e.target.value)} />
               <Input type="number" label="Available Cash ($)" placeholder="Calculated automatically" value={overrideAvailableCash} onChange={(e) => setOverrideAvailableCash(e.target.value)} />
+
+              <div className="pt-2 border-t border-border-subtle space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-surface-1 border border-border-subtle">
+                  <div>
+                    <span className="text-xs font-semibold text-text-primary block">Pause Daily Increment</span>
+                    <span className="text-[10px] text-text-muted">Freeze daily portfolio compounding for this user</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    id="overrideIsGrowthPaused"
+                    checked={overrideIsGrowthPaused}
+                    onChange={(e) => setOverrideIsGrowthPaused(e.target.checked)}
+                    className="w-4 h-4 rounded bg-surface-0 border-border-default text-brand-500 focus:ring-brand-500/20"
+                  />
+                </div>
+
+                <Input
+                  type="number"
+                  label="Custom Daily Growth Rate (%)"
+                  placeholder="0.3 (leave blank for system default)"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={overrideDailyGrowthRate}
+                  onChange={(e) => setOverrideDailyGrowthRate(e.target.value)}
+                  hint="Adjust or increase/reduce daily growth percentage for this user (e.g. 0.3 = 0.3%/day)"
+                />
+
+                {overrideIsGrowthPaused && (
+                  <Input
+                    type="text"
+                    label="Pause Notice to User"
+                    value={overridePausedReason}
+                    onChange={(e) => setOverridePausedReason(e.target.value)}
+                    hint="Notification message shown on the investor dashboard"
+                  />
+                )}
+              </div>
             </div>
             <div className="flex gap-3 pt-5 mt-5 border-t border-border-subtle">
               <Button onClick={handleSaveOverrides} isLoading={savingOverrides} className="flex-1">
@@ -1493,7 +1584,7 @@ export default function AdminDashboardPage() {
                     step="0.01"
                     value={planForm.dailyGrowthRate}
                     onChange={(e) => setPlanForm({ ...planForm, dailyGrowthRate: Number(e.target.value) })}
-                    hint="e.g. 5 = 5%/day"
+                    hint="e.g. 0.3 = 0.3%/day"
                   />
                   <Input
                     type="number"
@@ -1507,17 +1598,31 @@ export default function AdminDashboardPage() {
                   />
                 </div>
 
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    type="checkbox"
-                    id="planEnabled"
-                    checked={planForm.enabled}
-                    onChange={(e) => setPlanForm({ ...planForm, enabled: e.target.checked })}
-                    className="rounded border-border-subtle bg-surface-0 text-brand-600 focus:ring-brand-500 focus:ring-offset-surface-0"
-                  />
-                  <label htmlFor="planEnabled" className="text-xs text-text-secondary font-semibold cursor-pointer">
-                    Enable this plan immediately
-                  </label>
+                <div className="flex flex-col gap-2 pt-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="planEnabled"
+                      checked={planForm.enabled}
+                      onChange={(e) => setPlanForm({ ...planForm, enabled: e.target.checked })}
+                      className="rounded border-border-subtle bg-surface-0 text-brand-600 focus:ring-brand-500 focus:ring-offset-surface-0"
+                    />
+                    <label htmlFor="planEnabled" className="text-xs text-text-secondary font-semibold cursor-pointer">
+                      Enable this plan immediately
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="planGrowthPaused"
+                      checked={planForm.isGrowthPaused}
+                      onChange={(e) => setPlanForm({ ...planForm, isGrowthPaused: e.target.checked })}
+                      className="rounded border-border-subtle bg-surface-0 text-amber-500 focus:ring-amber-500 focus:ring-offset-surface-0"
+                    />
+                    <label htmlFor="planGrowthPaused" className="text-xs text-amber-300 font-semibold cursor-pointer">
+                      Pause daily growth increment for this plan
+                    </label>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t border-border-subtle">
@@ -1538,7 +1643,10 @@ export default function AdminDashboardPage() {
                     <div>
                       <div className="flex justify-between items-start gap-2 mb-3">
                         <h5 className="font-bold text-sm text-text-primary">{plan.name}</h5>
-                        <Badge variant={plan.enabled ? "approved" : "rejected"}>{plan.enabled ? "Active" : "Inactive"}</Badge>
+                        <div className="flex items-center gap-1.5">
+                          {plan.isGrowthPaused && <Badge variant="pending">Growth Paused</Badge>}
+                          <Badge variant={plan.enabled ? "approved" : "rejected"}>{plan.enabled ? "Active" : "Inactive"}</Badge>
+                        </div>
                       </div>
                       <p className="text-xs text-text-muted mb-4 line-clamp-2">{plan.description}</p>
                       <div className="bg-surface-0 rounded-xl p-3 border border-border-subtle mb-6 space-y-1.5">
@@ -1552,7 +1660,11 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="flex justify-between text-[11px]">
                           <span className="text-text-muted">Daily Rate:</span>
-                          <span className="font-bold text-profit">{(plan.dailyGrowthRate * 100).toFixed(2)}%/day</span>
+                          {plan.isGrowthPaused ? (
+                            <span className="font-bold text-amber-400">Paused (0.00%/day)</span>
+                          ) : (
+                            <span className="font-bold text-profit">{(plan.dailyGrowthRate * 100).toFixed(2)}%/day</span>
+                          )}
                         </div>
                         <div className="flex justify-between text-[11px]">
                           <span className="text-text-muted">Duration:</span>
@@ -1572,6 +1684,12 @@ export default function AdminDashboardPage() {
                         className="flex-1 bg-surface-2 hover:bg-surface-3 text-[10px] font-bold py-2 rounded-lg transition-colors text-brand-400"
                       >
                         Edit
+                      </button>
+                      <button
+                        onClick={() => togglePlanGrowthPause(plan.id, plan.isGrowthPaused)}
+                        className={cn("flex-1 text-[10px] font-bold py-2 rounded-lg transition-colors", plan.isGrowthPaused ? "bg-profit/10 hover:bg-profit/15 text-profit" : "bg-amber-500/10 hover:bg-amber-500/15 text-amber-400")}
+                      >
+                        {plan.isGrowthPaused ? "Resume" : "Pause"}
                       </button>
                       <button
                         onClick={() => togglePlanStatus(plan.id, plan.enabled)}

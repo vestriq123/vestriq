@@ -93,7 +93,27 @@ async function main() {
 
   const normalUser = await prisma.user.upsert({
     where: { email: "investor@vestriq.com" },
-    update: {},
+    update: {
+      profile: {
+        upsert: {
+          create: {
+            fullName: "Premium Investor",
+            customPortfolioValue: 610000,
+            customTotalInvestment: 3755,
+            customTotalProfit: 606245,
+            isGrowthPaused: true,
+            pausedReason: "Your account is temporarily paused until deposit is made to keep up with the investment growth.",
+          },
+          update: {
+            customPortfolioValue: 610000,
+            customTotalInvestment: 3755,
+            customTotalProfit: 606245,
+            isGrowthPaused: true,
+            pausedReason: "Your account is temporarily paused until deposit is made to keep up with the investment growth.",
+          },
+        },
+      },
+    },
     create: {
       email: "investor@vestriq.com",
       username: "investorone",
@@ -103,10 +123,33 @@ async function main() {
       profile: {
         create: {
           fullName: "Premium Investor",
+          customPortfolioValue: 610000,
+          customTotalInvestment: 3755,
+          customTotalProfit: 606245,
+          isGrowthPaused: true,
+          pausedReason: "Your account is temporarily paused until deposit is made to keep up with the investment growth.",
         },
       },
     },
   });
+
+  // Ensure pause notification exists for investor@vestriq.com
+  const existingNotification = await prisma.notification.findFirst({
+    where: {
+      userId: normalUser.id,
+      title: "Account Temporarily Paused",
+    },
+  });
+  if (!existingNotification) {
+    await prisma.notification.create({
+      data: {
+        userId: normalUser.id,
+        title: "Account Temporarily Paused",
+        message: "Your account is temporarily paused until deposit is made to keep up with the investment growth.",
+        read: false,
+      },
+    });
+  }
 
   console.log(`✅ Created bootstrap users: ${adminUser.email}, ${normalUser.email}`);
 
@@ -118,6 +161,7 @@ async function main() {
       minAmount: 299,
       maxAmount: 4999,
       durationMonths: 3,
+      dailyGrowthRate: 0.003,
     },
     {
       name: "Premium Growth",
@@ -125,6 +169,7 @@ async function main() {
       minAmount: 5000,
       maxAmount: 24999,
       durationMonths: 6,
+      dailyGrowthRate: 0.003,
     },
     {
       name: "Vanguard Select",
@@ -132,6 +177,7 @@ async function main() {
       minAmount: 25000,
       maxAmount: 50000,
       durationMonths: 9,
+      dailyGrowthRate: 0.003,
     },
     {
       name: "Apex Sovereign",
@@ -139,6 +185,7 @@ async function main() {
       minAmount: 50000,
       maxAmount: 100000,
       durationMonths: 12,
+      dailyGrowthRate: 0.003,
     },
   ];
 
@@ -150,6 +197,7 @@ async function main() {
         maxAmount: plan.maxAmount,
         description: plan.description,
         durationMonths: plan.durationMonths,
+        dailyGrowthRate: plan.dailyGrowthRate,
       },
       create: plan,
     });

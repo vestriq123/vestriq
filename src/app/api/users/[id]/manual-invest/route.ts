@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { notificationService } from "@/services/notificationService";
 import { InvestmentStatus, TransactionType, TransactionStatus } from "@prisma/client";
+import { DEFAULT_DAILY_GROWTH_RATE } from "@/lib/constants";
 
 const manualInvestSchema = z.object({
   amount: z.number().positive("Amount must be a positive number"),
@@ -80,7 +81,7 @@ export const POST = apiHandler(async (request: Request, context: unknown) => {
     });
 
     if (profile) {
-      // Custom fields compound at 5%/day relative to profile.updatedAt, which
+      // Custom fields compound at 0.3%/day relative to profile.updatedAt, which
       // Prisma will reset to "now" on this update. Roll the compounding fields
       // forward to their present value first, so resetting the clock doesn't
       // erase profit accrued since the last update.
@@ -92,10 +93,10 @@ export const POST = apiHandler(async (request: Request, context: unknown) => {
         updatedData.customTotalInvestment = profile.customTotalInvestment + amount;
       }
       if (profile.customTotalProfit !== null) {
-        updatedData.customTotalProfit = profile.customTotalProfit * Math.pow(1.05, daysSinceUpdate);
+        updatedData.customTotalProfit = profile.customTotalProfit * Math.pow(1 + DEFAULT_DAILY_GROWTH_RATE, daysSinceUpdate);
       }
       if (profile.customPortfolioValue !== null) {
-        const compoundedPortfolioValue = profile.customPortfolioValue * Math.pow(1.05, daysSinceUpdate);
+        const compoundedPortfolioValue = profile.customPortfolioValue * Math.pow(1 + DEFAULT_DAILY_GROWTH_RATE, daysSinceUpdate);
         updatedData.customPortfolioValue = compoundedPortfolioValue + amount;
       }
 

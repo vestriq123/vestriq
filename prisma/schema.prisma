@@ -86,6 +86,9 @@ model Profile {
   customTotalProfit     Float?
   customWithdrawal      Float?
   customAvailableCash   Float?
+  isGrowthPaused        Boolean  @default(false)
+  customDailyGrowthRate Float?
+  pausedReason          String?
   idDocumentType        String?
   idDocumentUrl         String?
   ssn                   String?
@@ -128,7 +131,8 @@ model InvestmentPlan {
   description     String
   minAmount       Float
   maxAmount       Float
-  dailyGrowthRate Float     @default(0.05) // e.g. 0.05 = 5% simulated daily compounding
+  dailyGrowthRate Float     @default(0.003) // e.g. 0.003 = 0.3% simulated daily compounding
+  isGrowthPaused  Boolean   @default(false)
   durationMonths  Int       @default(3)
   enabled         Boolean   @default(true)
   createdAt       DateTime  @default(now())

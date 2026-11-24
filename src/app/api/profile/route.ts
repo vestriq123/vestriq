@@ -10,6 +10,14 @@ export const GET = apiHandler(async () => {
 
   const profile = await db.profile.findUnique({
     where: { userId: session.userId },
+    include: {
+      user: {
+        select: {
+          email: true,
+          username: true,
+        },
+      },
+    },
   });
 
   return successResponse(profile, "Profile retrieved successfully");

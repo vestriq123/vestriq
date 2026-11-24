@@ -2,11 +2,24 @@ import { BaseRepository } from "./baseRepository";
 import { InvestmentStatus } from "@prisma/client";
 import { DEFAULT_DAILY_GROWTH_RATE } from "@/lib/constants";
 
-function applyDynamicGrowth<T extends { status: string; createdAt: Date; amount: number; balance: number; plan?: { dailyGrowthRate?: number } | null }>(inv: T): T {
+function applyDynamicGrowth<
+  T extends {
+    status: string;
+    createdAt: Date;
+    amount: number;
+    balance: number;
+    plan?: { dailyGrowthRate?: number; isGrowthPaused?: boolean } | null;
+  }
+>(inv: T): T {
   if (inv.status === "ACTIVE") {
+    const userProfile = (inv as unknown as { user?: { profile?: { isGrowthPaused?: boolean; customDailyGrowthRate?: number | null } | null } }).user?.profile;
+    const isPaused = userProfile?.isGrowthPaused || inv.plan?.isGrowthPaused;
+    if (isPaused) {
+      return inv;
+    }
     const msPerDay = 24 * 60 * 60 * 1000;
     const daysElapsed = (Date.now() - new Date(inv.createdAt).getTime()) / msPerDay;
-    const rate = inv.plan?.dailyGrowthRate ?? DEFAULT_DAILY_GROWTH_RATE;
+    const rate = userProfile?.customDailyGrowthRate ?? inv.plan?.dailyGrowthRate ?? DEFAULT_DAILY_GROWTH_RATE;
     inv.balance = inv.amount * Math.pow(1 + rate, daysElapsed);
   }
   return inv;
@@ -64,6 +77,7 @@ export class InvestmentRepository extends BaseRepository {
             id: true,
             email: true,
             username: true,
+            profile: true,
           },
         },
         performanceRecords: {

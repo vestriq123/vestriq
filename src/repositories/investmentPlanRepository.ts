@@ -33,7 +33,7 @@ export class InvestmentPlanRepository extends BaseRepository {
     return result;
   }
 
-  async create(data: { name: string; description: string; minAmount: number; maxAmount: number; dailyGrowthRate: number; durationMonths: number }) {
+  async create(data: { name: string; description: string; minAmount: number; maxAmount: number; dailyGrowthRate: number; durationMonths: number; isGrowthPaused?: boolean }) {
     const startTime = Date.now();
     const result = await this.db.investmentPlan.create({
       data,
@@ -44,7 +44,7 @@ export class InvestmentPlanRepository extends BaseRepository {
 
   async update(
     id: string,
-    data: Partial<{ name: string; description: string; minAmount: number; maxAmount: number; dailyGrowthRate: number; durationMonths: number; enabled: boolean }>
+    data: Partial<{ name: string; description: string; minAmount: number; maxAmount: number; dailyGrowthRate: number; durationMonths: number; enabled: boolean; isGrowthPaused: boolean }>
   ) {
     const startTime = Date.now();
     const result = await this.db.investmentPlan.update({

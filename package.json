@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "prisma db seed",
+    "update-portfolio": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/update-portfolio.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

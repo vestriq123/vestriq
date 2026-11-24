@@ -2,7 +2,7 @@
 // plan rate (e.g. legacy data) or for admin-set custom portfolio overrides,
 // which aren't tied to a single plan. Plans set their own rate via
 // InvestmentPlan.dailyGrowthRate, editable by admins in Plan Management.
-export const DEFAULT_DAILY_GROWTH_RATE = 0.05;
+export const DEFAULT_DAILY_GROWTH_RATE = 0.003;
 
 export interface Company {
   name: string;

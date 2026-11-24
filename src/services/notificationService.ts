@@ -17,6 +17,44 @@ export class NotificationService {
     });
   }
 
+  async sendAccountPaused(userId: string, reason?: string, tx?: DbClient) {
+    const client = this.getClient(tx);
+    const user = await client.user.findUnique({
+      where: { id: userId },
+      select: { email: true, username: true }
+    });
+
+    if (!user) return;
+
+    const title = "Account Temporarily Paused";
+    const message = reason || "Your account is temporarily paused until deposit is made to keep up with the investment growth.";
+
+    // 1. Create In-App Notification
+    await client.notification.create({
+      data: {
+        userId,
+        title,
+        message,
+      },
+    });
+
+    // 2. Send Email
+    try {
+      const bodyHtml = `
+        <p>Hello <span class="highlight">${user.username}</span>,</p>
+        <p>${message}</p>
+        <p>Please make a deposit to keep up with investment growth and resume daily portfolio compounding.</p>
+      `;
+      await emailService.sendEmail({
+        to: user.email,
+        subject: `Vestriq - ${title}`,
+        bodyHtml,
+      });
+    } catch (e) {
+      console.warn("Failed to send account paused email", e);
+    }
+  }
+
   async sendDepositApproved(userId: string, amount: number, planName: string, tx?: DbClient) {
     const client = this.getClient(tx);
     const user = await client.user.findUnique({
